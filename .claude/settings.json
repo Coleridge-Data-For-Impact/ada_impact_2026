@@ -6,7 +6,9 @@
       "Bash(for f in 01_EDA.qmd 02_datamodel_cross_section.qmd 03_measurement.qmd 03a_data_model_introduction.qmd 04_regression.qmd 05_propensity_score_matching.qmd 06_export.qmd 07_difference_in_differences.qmd)",
       "Bash(do echo \"=== $f ===\")",
       "Read(//c/Users/corey/Github/ada_impact_2026/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "WebFetch(domain:www.mdrc.org)",
+      "WebFetch(domain:coleridgeinitiative.org)"
     ]
   }
 }

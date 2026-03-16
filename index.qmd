@@ -1,36 +1,36 @@
 # Preface {.unnumbered}
 
-This e-book contains the class notebooks for the Coleridge 2025 Value Data Collaborative Applied Data Analytics Class examining student return on investment metrics and thresholds in the Pennsylvania State System of Higher Education (PASSHE).
+This e-book contains the class notebooks for Coleridge's Applied Data Analytics training delivered as part of the **State IMPACT Collaborative** 2025–2026 class.
 
-© 2025 The Coleridge Initiative, Inc
+© 2026 The Coleridge Initiative, Inc
 
-# Value Data Collaborative 2025 class
+# About the State IMPACT Collaborative
 
-The Gates Foundation funded an Applied Data Analytics training class delivered by the Coleridge, in partnership with the Institute for Higher Education Policy (IHEP). The training class focused on the linkage of post-secondary student enrollment and completion information for PASSHE institutions, linked to employment and wage outcomes. Accepted class participants learned and applied data analytic approaches to PASSSHE data and Pennsylvania Department of Labor and Industry employment and wage data to better understand the return on investment for PASSHE students using the Postsecondary Value Framework as a guiding framework.
+The [State IMPACT (Innovative Models for Policy Acceleration & Collaborative Testing) Collaborative](https://coleridgeinitiative.org/state-impact-collaborative) is a partnership between the [Coleridge Initiative](https://coleridgeinitiative.org) and [MDRC](https://www.mdrc.org/work/projects/state-impact-collaborative) designed to strengthen state agencies' capacity for rigorous program evaluation.
 
-This repository contains the [class materials](https://coleridge-initiative.github.io/ada-2025-vdc/) for the  Applied Data Analytics training program.
+The collaborative brings together state and local agency staff, MDRC researchers, and Coleridge Initiative data scientists in a "learning-by-doing" model. MDRC contributes evaluation expertise and five decades of experience in rigorous program evaluation, while Coleridge provides its Applied Data Analytics training course and secure Administrative Data Research Facility (ADRF) workspace for analyzing linked administrative data.
 
-**Data Sources Used for the Class:**
+**Policy domains** supported by the collaborative include workforce development, higher education, income support, housing, and justice programs.
 
--   PASSHE Enrollment and Completion Records
--   PASSHE Financial Aid records
--   PADLI Wage records
--   American Community Survey microdata
+# About This Training
 
-**Class Program**
+This applied data analytics training is designed to build analytical capacity within state agencies participating in the State IMPACT Collaborative. Participants learn to leverage administrative data to address high-priority policy questions using reproducible, rigorous methods.
 
-Day 1 - Overview, Project Scoping, and Privacy, Confidentiality, and Ethics
+The training covers:
 
-Day 2 - Value Framework 
+-   Exploratory data analysis of administrative program records
+-   Cross-sectional and cohort analysis
+-   Measurement of employment and wage outcomes
+-   Regression analysis and propensity score matching
+-   Difference-in-differences methods for program evaluation
+-   Data visualization and export of analytic results
 
-Day 3 - Dataset Introductions and Project Scoping & Exploratory Data Analysis
+# About This Book
 
-Day 4 - Cross-Sectional & Cohort Analysis
+This book contains the class notebooks and supporting SQL scripts used in the 2025–2026 training. It is organized into three parts:
 
-Day 5 - Project Status Presentations
+-   **Notebooks** — step-by-step analytical notebooks covering the full evaluation workflow
+-   **Data Model Scripts** — SQL scripts used to build the dimensional data model underlying the analysis
+-   **Supplemental** — reference materials on package installation and data imputation
 
-Day 6 -  Analysis
-
-Day 7 - Measurement, Missingness and Inference
-
-Day 8 - Data Visualization, Communicating Results and Exporting Data
+The training uses linked administrative data provided by participating state agencies and accessed through the Coleridge Initiative's secure ADRF environment.
