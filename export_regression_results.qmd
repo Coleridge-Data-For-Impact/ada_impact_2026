@@ -1,0 +1,231 @@
+---
+title: "MDRC- webinar export"
+format: html
+---
+This is an export for State IMPACT
+These are summaries of several regression analyses.
+Each analysis has the count of unique SSN's used provided.
+
+
+
+```{r}
+library(tidyverse)
+library(ColeridgeInitiative)
+library(emmeans)
+```
+
+# Data
+```{r}
+con <- adrf_redshift("training")
+
+library(dbplyr)
+
+dat <- con %>% 
+  tbl(in_schema(schema = "tr_state_impact_ada_training",
+                table = "nb_analysis_frame")) %>% collect()
+
+```
+
+# regression 1
+## Count documentation
+```{r}
+counts <- dat %>%
+  mutate(na_wage_q37 = ifelse(is.na(wages_q37)==T, 0,1),
+         na_prior_wage = ifelse(is.na(scale_prior_wages)==T,0,1),
+         na_prior_work = ifelse(is.na(quarters_active_prior_2yr)==T,0,1))%>% 
+  select(person_key, gender, age_cat, edu_cat,wp_enroll, na_wage_q37, na_prior_wage, na_prior_work) %>%
+  mutate(across(c(gender, age_cat, edu_cat, wp_enroll,na_wage_q37, na_prior_wage, na_prior_work), as.character)) %>%
+  pivot_longer(
+    cols = c( gender, age_cat, edu_cat,wp_enroll,na_wage_q37, na_prior_wage, na_prior_work),
+    names_to = "variable",
+    values_to = "category"
+  ) %>%
+  group_by(variable, category) %>%
+  summarise(
+    n_unique_ssn = n_distinct(person_key),
+    .groups = "drop"
+  ) %>%
+  collect()
+  
+
+counts
+```
+
+
+## Regression output 
+```{r}
+reg1 <- lm( wages_q37 ~ gender +  age_cat + edu_cat + wp_enroll + scale_prior_wages +quarters_active_prior_2yr , data=dat )
+
+reg1 %>% broom::tidy()
+
+emmeans(reg1, ~age_cat + gender + wp_enroll)
+```
+
+
+## logistic regression output
+```{r}
+logreg1<- glm( wp_enroll ~ age_cat + gender + edu_cat + scale_prior_wages +quarters_active_prior_2yr , data = dat, family = binomial)
+
+logreg1 %>% broom::tidy()
+
+emmeans(logreg1, ~age_cat +scale_prior_wages ,
+        at = list("scale_prior_wages" = c(0, 1)),
+         type = "response")
+```
+
+# Propensity score analysis
+
+## initial output - less robust
+
+```{r}
+library(MatchIt)
+library(cobalt)
+m <- matchit(wp_enroll ~ gender+ age_cat + edu_cat + eth_recode + scale_prior_wages + scale_prior_year_wage + quarters_active_prior_2yr ,
+             data   = dat)
+m0 <- summary(m)
+m0
+
+love.plot(m, abs = T) +
+  geom_vline(xintercept = 0.1, lty = 2)  
+```
+
+## try 2 - more robust
+
+```{r}
+match2<- matchit(wp_enroll ~gender+ age_cat +edu_cat+ eth_recode+ scale_prior_wages + scale_prior_year_wage +quarters_active_prior_2yr ,
+             data   = dat,         
+             caliper = .05)
+
+love.plot(match2, abs=T) + geom_vline(xintercept = 0.1, lty = 2)
+```
+
+## Try 3 - most robust
+
+```{r}
+m_nn2 <- matchit(wp_enroll ~gender+ age_cat +edu_cat+ eth_recode+ scale_prior_wages + scale_prior_year_wage +quarters_active_prior_2yr ,
+             data   = dat,
+             exact    = ~ prior_wage_bin ,
+             caliper  = 0.05,
+             ratio = 2)
+
+m0_nn2<-summary(m_nn2)
+
+m0_nn2
+
+love.plot(m_nn2, abs =T) + geom_vline(xintercept = 0.1, lty = 2)
+
+```
+
+
+
+```{r}
+
+matched <- match.data(m_nn2)
+
+
+library(halfmoon)
+ggplot(
+  matched,
+  aes(distance, fill = factor(wp_enroll))
+) +
+  geom_mirror_histogram(bins = 50) +
+  scale_y_continuous(labels = abs) +
+  labs(x = "propensity score", fill = "WP - enrolled")
+```
+
+## ATT on result 3
+```{r}
+weighted_treat <- with(matched, weighted.mean(wages_q41[wp_enroll == 1], weights[wp_enroll == 1]))
+weighted_control <- with(matched, weighted.mean(wages_q41[wp_enroll == 0], weights[wp_enroll == 0]))
+ATT <- weighted_treat - weighted_control
+ATT
+```
+
+
+## Basic regression on mathed results for Q41
+```{r}
+
+att_mod <- lm(wages_q41 ~ wp_enroll,
+       data = matched, 
+       weights = weights)
+
+summary(att_mod)
+```
+
+
+# DIff in Diff analysis
+```{sql , output.var="data_did"}
+select
+        ncm.*,
+        fpuw.year_quarter_key,
+        fpuw.ui_quarterly_wages
+from tr_state_impact_ada_training.nb_analysis_matched ncm
+left join tr_state_impact_ada_training.fact_person_ui_wage fpuw
+    on ncm.person_key = fpuw.person_key
+    and (fpuw.year_quarter_key >=27 and fpuw.year_quarter_key <= 39 or fpuw.ui_quarterly_wages is null)
+order by ncm.person_key, fpuw.year_quarter_key 
+```
+
+
+```{r}
+data_did <- data_did |>
+  mutate(
+    treat = as.integer(wp_enroll == 1),   # 1 = ever treated, 0 = never
+    post  = as.integer(year_quarter_key >= 31), # 1 = quarter 31+ is "after"
+    treat_post =treat*post)
+```
+
+## Count documentation for DID analysis
+```{r}
+counts_did <- data_did %>%
+  mutate(na_wage = ifelse(is.na(ui_quarterly_wages)==T, 0,1))%>% 
+  select(person_key, treat, post, treat_post, na_wage) %>%
+  mutate(across(c(treat, post, treat_post,na_wage), as.character)) %>%
+  pivot_longer(
+    cols = c( treat, post, treat_post,na_wage),
+    names_to = "variable",
+    values_to = "category"
+  ) %>%
+  group_by(variable, category) %>%
+  summarise(
+    n_unique_ssn = n_distinct(person_key),
+    .groups = "drop"
+  ) %>%
+  collect()
+  
+
+counts_did
+```
+
+
+## DID estimates
+```{r}
+library(fixest) # need to install first
+
+m_twfe <- feols(
+  ui_quarterly_wages ~ treat:post | person_key + year_quarter_key,
+  cluster ~ person_key,
+  data = data_did
+)
+
+coef(m_twfe)
+ m_twfe$coeftable
+```
+
+```{r, eval = FALSE}
+plot_data <- data_did %>%
+  group_by(treat, year_quarter_key) %>%
+  summarize(mean_wages = mean(ui_quarterly_wages, na.rm = TRUE), .groups = "drop")
+
+ggplot(plot_data, aes(x = year_quarter_key, y = mean_wages, color = factor(treat))) +
+  geom_line(size = 1.2) +
+  geom_vline(xintercept = 31, linetype = "dashed") +
+  labs(
+    x = "Quarter",
+    y = "Average Quarterly Wages",
+    color = "Treatment Group",
+    title = "Difference-in-Differences Plot of Wages Over Time"
+  ) +
+  theme_minimal()
+```
+

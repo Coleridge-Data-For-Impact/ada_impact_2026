@@ -1,0 +1,368 @@
+---
+title: Notebook 7 - Difference in Differences Analysis
+author: "Corey Sparks, Ph.D., Sufiyan Syed, and Daron Holman"
+subtitle: "State IMPACT Applied Data Analytics Module 2: "
+toc: true
+toc_depth: 3
+toc_float:
+  collapsed: no
+  smooth_scroll: yes
+toc_location: left
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    df-print: paged
+    code-annotations: hover
+execute:
+  eval: false
+---
+
+![](images/ada_sticker.png){fig-align="center"}
+
+
+## Introduction
+```{r setup, include=FALSE}
+#HIDE THIS CHUNK FROM KNITTED OUTPUT
+knitr::opts_chunk$set(include=TRUE, echo=TRUE, eval = FALSE,  warning = FALSE, fig.align = 'center')  #results=‘hide’) # needs to delete results=‘hide’
+```
+
+Welcome to this lesson on Difference-in-Differences (DiD) analysis. In this notebook, we build on earlier work with descriptive comparisons and regression models to introduce a powerful analytic approach for evaluating the impact of programs and policies over time. Many of the questions we face as analysts focus on understanding whether a program *changed* an outcome of interest-such as wages, employment, or recidivism. DiD helps us answer these questions by comparing how outcomes evolve for participants versus similar nonparticipants, before and after a program begins.
+
+In this lesson, we will reintroduce our familiar longitudinal perspective, where individuals are observed across multiple time periods. We will use this structure to examine changes in outcomes surrounding a specific event-such as enrolling in a workforce program-and compare those changes to a group that did not experience the event. This framework moves us beyond simple "before-and-after" comparisons by accounting for broader trends that affect everyone, such as economic shifts or seasonal patterns.
+
+Previously, our focus was on understanding how individual characteristics were associated with outcomes at a single point in time. Difference-in-Differences extends this framework by bringing time explicitly into the analysis. Instead of asking only *who* has higher wages, we now ask *how wages change* before and after treatment, and how those changes differ between groups. By leveraging these patterns, we can better isolate the effect of the program from other factors that may influence outcomes.
+
+By the end of this notebook, you will be able to set up and interpret a Difference-in-Differences model using program data, understand the role of comparison groups and time periods, and recognize how this method helps strengthen causal claims in applied evaluation settings. DiD provides a critical bridge between simple descriptive trends and more advanced causal inference methods, helping analysts assess program impact in a practical and transparent way.
+
+## The Purpose of these Notebooks
+
+You will now have the opportunity to apply the skills covered in both modules thus far to restricted use Arkansas data. With your team, you will carry out a detailed analysis of this data and prepare a final project showcasing your results.
+
+These workbooks are here to help you along in this project development by showcasing how to apply the techniques discussed in class to the Arkansas data. Part of this notebook will be technical - providing basic code snippets your team can **modify** to begin parsing through the data. As always, however, there will also be an applied data literacy component of these workbooks, and it should help you develop a better understanding of the structure and use of the underlying data even if you never wrote a line of code.
+
+The timeline for completing these workbooks will be provided on the training website and communicated to you in class.
+
+::: {.callout collapse="true"}
+# Technical setup
+
+This workbook will leverage both SQL and R coding concepts, so we need to set up our environment to connect to the proper database and run R code only accessible in packages external to the basic R environment. Typically, throughout these workbooks, we use SQL for the majority of data exploration and creation of the analytic frame, and then read that analytic frame into R for the descriptive analysis and visualization.
+
+**Note:** If you would like to view the material to establish your own environment for running the code displayed in this notebook, you can expand the following "Environment Setup" section by clicking on its heading.
+
+::: {.panel-tabset}
+## SQL Setup
+
+For working with the database directly using SQL, the easiest way is to still copy the commands from this notebook into a script in DBeaver. As a reminder, the steps to do so are as follows:
+
+To create a new .sql script:
+
+1.  Open DBeaver, located on the ADRF Desktop. The icon looks like this:
+
+    ![](images/dbeaver.png)
+
+2.  Establish your connection to the database by logging in. To do this, double-click `Redshift11_projects` on the left hand side, and it will ask for your username and password. Your username is `adrf\` followed by the name of your U: drive folder - for example, `adrf\John.Doe.T00112`. Your password is the same as the **second** password you used to log in to the ADRF - if you forgot it, you **adjust it in the ADRF management portal!**
+
+    After you successfully establish your connection, you should see a green check next to the database name, like so:
+
+    ![](images/success.png)
+
+3.  In the top menu bar, click **SQL Editor** then **New SQL Script**:
+
+    ![](images/new_script.png)
+
+4.  To test if your connection is working, try pasting the following chunk of code into your script:
+```{sql, eval=FALSE,  eval=FALSE}
+    SELECT * 
+    FROM tr_state_impact_ada_training.dim_person
+    LIMIT 5
+```
+
+    Then run it by clicking the run button next to the script, or by pressing CTRL + Enter.
+
+5.  You should then be able to see the query output in the box below the code.
+
+
+## R Setup
+
+#### Install Packages {.unnumbered}
+
+Because we have left the world of the Foundations Module and entered a new workspace, we need to re-install packages that are not native to the base R environment. **We only need to do this once - this workflow for programming in R is identical to that outside the ADRF.**
+
+::: callout-note
+In the ADRF, you are limited to installing packages available on the Comprehensive R Archive Networks, commonly referred to as CRAN. CRAN is the primary centralized repository for R packages. Packages must meet certain requirements before they can become available on CRAN. Outside the ADRF, you can install packages available on other repositories, such as those accessible on Github repositories.
+:::
+
+To install a package, in the console in R studio, type the following:
+
+```{r, eval=FALSE}
+install.packages('INSERT_PACKAGE_NAME')
+```
+
+For example, to install the package `RJDBC` (for establishing our connection to the database), you should type:
+
+```{r, eval=FALSE}
+install.packages("RJDBC")
+```
+
+If you run this, you should see a set of messages in your console similar to the below:
+
+![](images/RJDBC_install.png)
+
+After running this, `RJDBC` will be installed for you within your ADRF workspace. You will not need to re-install it each time you log back into the workspace.
+
+There are two simple ways to identify if a package has already been installed in your environment:
+
+1.  You can run `library(INSERT_PACKAGE_NAME)`, and if it returns an error like the following, it has not been installed properly:
+
+![](images/error.png)
+
+2.  You can manually check in the bottom right pane inside R Studio by selecting the Packages tab and seeing if the package is available. Packages should be sorted alphabetically and those with a check beside them have not just already been installed, but also loaded into the environment for use:
+
+![](images/package_pane.png)
+
+**To install all of the packages you will need for this notebook, please run the following:**
+
+```{r, eval=FALSE}
+install.packages("RJDBC")
+install.packages("tidyverse")
+install.packages("dbplyr")
+install.packages('emmeans')
+```
+
+Additionally, in order to establish our database connection in R, please install the following custom package that has already been uploaded into the P: drive of this workspace:
+
+```{r, eval=FALSE}
+install.packages("P:/tr-state-impact-ada-training/r_packages/ColeridgeInitiative_0.1.2.zip")
+library(ColeridgeInitiative)
+```
+
+If you are using R for the first time in this workspace, you should use the `install_new()` function to install key packages for your workflows.
+
+```{r, eval=FALSE}
+install_new()
+```
+
+**NOTE** You only have to run `install_new()` once, not each time you start Rstudio.
+
+#### Load Libraries {.unnumbered}
+
+After installing these packages, we next need to load them to make them available in our R environment. This is identical to the procedure we followed in the Foundations Module
+
+```{r}
+library(ColeridgeInitiative)
+library(tidyverse)
+library(dbplyr)
+library(zoo) ## need to install
+```
+:::
+
+:::
+
+
+
+#### Establish Database Connection {.unnumbered}
+
+To load data from the Redshift server into R, we need to first set up a connection to the database. The following command will prompt you for password and establish the connection
+
+:::{.callout-tip}
+NOTE, here we add the option so that the redshift connection can have more memory, in this case 16gb of RAM. This can help if the data you are trying to read into R is large.
+:::
+
+```{r}
+
+options(java.parameters = c("-XX:+UseConcMarkSweepGC", "-Xmx16000m"))
+gc()
+
+con <- adrf_redshift(usertype = "training")
+```
+
+
+# Data set construction
+
+For this notebook, we need a modified version of the data we constructed in the propensity score analysis notebook.
+
+This SQL query pulls the wage data needed for the Difference-in-Differences analysis by combining the matched analysis file with quarterly wage records. The query starts with the matched cohort (nb_analysis_matched), which contains the individuals selected for the treatment and comparison groups. It then performs a left join to the UI wage table to bring in quarterly earnings (ui_quarterly_wages) for each person.
+
+To focus the analysis on the relevant time window around the program start, the query restricts the wage records to quarters 27 through 39, capturing both the pre-treatment and post-treatment periods. The left join ensures that individuals remain in the dataset even if they are missing wage records in some quarters. Finally, the results are ordered by person and quarter, producing a clean longitudinal structure that can be used to construct the treatment, time, and interaction variables required for the DiD model.
+
+```{sql, eval=FALSE}
+
+select
+        ncm.*,
+        fpuw.year_quarter_key,
+        fpuw.ui_quarterly_wages
+from tr_state_impact_ada_training.nb_analysis_matched ncm
+left join tr_state_impact_ada_training.fact_person_ui_wage fpuw
+    on ncm.person_key = fpuw.person_key
+    and (fpuw.year_quarter_key >=27 and fpuw.year_quarter_key <= 39 or fpuw.ui_quarterly_wages is null)
+order by ncm.person_key, fpuw.year_quarter_key 
+
+```
+
+
+# Preparing for difference in differences analysis
+Before we can estimate a Difference-in-Differences (DiD) model, we first need to create a small set of indicator variables that define (1) who is in the treatment group and (2) when the treatment begins. These variables allow the model to compare how outcomes change over time for treated individuals versus those who were never treated.
+
+The code below creates three essential variables:
+
+- treat - identifies whether an individual ever participated in the program
+
+- post - identifies whether a wage observation occurs before or after the program starts
+
+- treat_post - the interaction of the two, which equals 1 only for treated individuals after the program begins
+
+```{r}
+
+data_did <- data_did |>
+  mutate(
+    treat = as.integer(wp_enroll == 1),   # 1 = ever treated, 0 = never
+    post  = as.integer(year_quarter_key >= 31), # 1 = quarter 31+ is "after"
+    treat_post =treat*post)
+```
+
+
+## Explanation of Each Variable
+
+1. treat - Treatment Group Indicator
+This variable identifies which individuals ever enrolled in the program.
+
+If wp_enroll equals 1, the person is part of the treatment group, and treat is set to 1. If not, treat is 0.
+
+This allows us to distinguish participants from nonparticipants across the entire dataset.
+
+2. post - Post-Treatment Time Indicator
+This variable identifies when the treatment becomes available. 
+
+Any quarter before quarter 31 receives a 0.
+
+Any quarter at or after quarter 31 receives a 1.
+
+This tells the model when the program began affecting outcomes.
+
+3. treat_post - Treatment ? Post Indicator
+This variable is the product of the two previous indicators.
+It equals 1 only when both conditions are true:
+
+The person is in the treatment group (treat == 1)
+
+The observation occurs after the treatment period begins (post == 1)
+
+This interaction term is the key component of a DiD analysis. It represents the time period when treated individuals could actually experience program effects. The coefficient on treat_post in the DiD model estimates how much more (or less) treated individuals changed over time compared with the comparison group.
+
+
+# Introduction to Difference-in-Differences (DiD) Analysis
+
+When evaluating the impact of a program or policy, analysts often face an important challenge: participants and nonparticipants may differ in ways that affect outcomes. The difference-in-differences (DiD) approach helps address this issue by comparing changes over time in an outcome for a treatment group and a comparison group. Rather than relying only on average differences between groups, DiD focuses on how outcomes change before and after treatment, isolating the impact of the program under the assumption that, without treatment, both groups would have experienced similar trends.
+
+In this lesson, we use quarterly wage data to estimate how participation in a workforce program affected individual earnings. The key variables in the analysis are:
+
+ui_quarterly_wages - the quarterly wage outcome
+
+treat - identifies whether an individual ever participated in the program
+
+post - indicates whether the observation occurs after the program begins (quarter 31)
+
+person_key and year_quarter_key - identify the individual identifier and the quarter
+
+# The feols() function
+
+`feols()` from the `fixest` package estimates a regression model that includes fixed effects. It is optimized for cases where there are many individuals and many time periods, making it well suited for difference-in-differences designs.
+
+:::{.callout-tip}
+NOTE, you will need to instal the `fixest` package prior to using it, by using `install.packages('fixest')`.
+:::
+
+## Parts of the analysis
+
+- The formula: `ui_quarterly_wages ~ treat:post`
+
+This part of the code specifies the outcome and the key explanatory variable.
+
+ui_quarterly_wages is the quarterly wage outcome.
+
+treat is an indicator that identifies members of the treatment group.
+
+post is an indicator for whether the time period is after the program begins.
+
+The interaction term treat:post equals 1 only for treated individuals in the post-treatment period.
+
+The coefficient on treat:post is the difference-in-differences estimate. It measures how much the wage change for treated individuals differs from the wage change for the comparison group.
+
+- Fixed effects: `| person_key + year_quarter_key`
+
+The bar (|) introduces fixed effects into the model.
+
+`person_key` adds individual fixed effects, which control for all unobserved, time-invariant characteristics of each person (such as baseline skill or experience).
+
+`year_quarter_key` adds time fixed effects, which control for quarter-specific factors that affect everyone (such as economic conditions).
+
+These fixed effects ensure that the model compares each individual to themselves over time while accounting for any quarter-specific influences on wages.
+
+### Data and clustering
+
+- data = `data_did` specifies the dataset.
+
+- `cluster = ~ person_key` requests cluster-robust standard errors at the individual level. Because each individual contributes multiple wage observations, clustering accounts for within-person correlation in the errors and produces correct inference.
+
+:::{.callout-note}
+What Are Cluster-Robust Standard Errors?
+
+Cluster-robust standard errors are a way to produce more reliable statistical uncertainty estimates when the data contain repeated observations for the same individual, group, or unit. In situations like quarterly wage records, measurements from the same person are often correlated with each other rather than behaving like independent data points. Standard regression methods assume independence, which can lead to standard errors that are too small and results that appear more certain than they actually are.
+
+Cluster-robust standard errors correct for this by allowing observations within each individual (or "cluster") to be correlated, while still assuming different individuals are independent. This adjustment produces standard errors that more accurately reflect the structure of the data and leads to more trustworthy significance tests and confidence intervals in models such as Difference-in-Differences.
+
+:::
+
+### Displaying the results
+
+`summary(m_twfe)` displays the estimated treatment effect and associated statistics. The most important value is the coefficient on treat:post, which represents the estimated impact of program participation on wages.
+
+```{r}
+library(fixest) # need to install first
+
+m_twfe <- feols(
+  ui_quarterly_wages ~ treat:post | person_key + year_quarter_key,
+  cluster ~ person_key,
+  data = data_did
+)
+
+summary(m_twfe)
+```
+
+## Interpretation of the Difference-in-Differences Result
+
+The Difference-in-Differences model estimated a treatment effect of 133.6, and this estimate is statistically significant. This means that, after accounting for individual characteristics and overall quarterly trends, individuals who participated in the Wagner-Peyser program experienced an average increase of 133 dollars per quarter in their wages after the program began, compared with similar individuals who did not participate.
+
+In practical terms, this indicates that the program is associated with a meaningful improvement in quarterly earnings. The statistical significance of the estimate means that this result is unlikely to be due to random chance and provides credible evidence that program participation contributed to the observed wage gains during the post-treatment period.
+
+
+## Graphical interpretation
+We can generate a plot showing the basic view of the mean difference in the treatment and control groups. While this is not the same as
+
+```{r}
+
+plot_data <- data_did %>%
+  group_by(treat, year_quarter_key) %>%
+  summarize(mean_wages = mean(ui_quarterly_wages, na.rm = TRUE), .groups = "drop")
+
+ggplot(plot_data, aes(x = year_quarter_key, y = mean_wages, color = factor(treat))) +
+  geom_line(size = 1.2) +
+  geom_vline(xintercept = 31, linetype = "dashed") +
+  labs(
+    x = "Quarter",
+    y = "Average Quarterly Wages",
+    color = "Treatment Group",
+    title = "Difference-in-Differences Plot of Wages Over Time"
+  ) +
+  theme_minimal()
+
+```
+
+In this plot, we see the Wagner-Peyser enrollees had higher average wages compared to non-participants in the quarters after enrollment (quarter 31), but the difference disappears after about quarter 33, suggesting that the difference is a short-term one.
+
+# Next Steps: Applying the notebook to your project
+
+This workbook applies the concepts of Difference-in-Differences analysis to the Arkansas data and demonstrates how this method can be used to evaluate program impacts using longitudinal wage records. In this notebook, we showed how to create treatment and time indicators, estimate a DiD model using fixed effects, and visualize the results using a trend plot. These tools help isolate how wages change for program participants relative to similar nonparticipants, providing stronger evidence of program impact than simple before-and-after comparisons.
+
+As you work on your team projects, consider whether your outcomes and program of interest can be structured in a pre/post format similar to the approach used here. If your data include repeated observations over time-such as quarterly wages, monthly employment, or annual program measures-you may be able to apply a DiD framework to assess whether a program or event led to meaningful changes. This method is especially useful when randomized experiments are not possible and when you need to separate true program effects from broader trends affecting everyone in the system. As you develop your project analyses, think about how Difference-in-Differences can complement your descriptive findings and help strengthen the causal story you present in your team's final report.

@@ -1,0 +1,545 @@
+---
+title: Notebook 4 - Applied Regression Analysis
+author: "Corey Sparks, Ph.D., Sufiyan Syed, and Daron Holman"
+subtitle: "State IMPACT Applied Data Analytics Module 2: "
+toc: true
+toc_depth: 3
+toc_float:
+  collapsed: no
+  smooth_scroll: yes
+toc_location: left
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    df-print: paged
+execute:
+  eval: false
+---
+
+![](images/ada_sticker.png){fig-align="center"}
+
+# Introduction
+```{r setup, include=FALSE}
+#HIDE THIS CHUNK FROM KNITTED OUTPUT
+knitr::opts_chunk$set(include=TRUE, echo=TRUE, eval = FALSE,  warning = FALSE, fig.align = 'center')  #results=‘hide’) # needs to delete results=‘hide’
+```
+
+Welcome to the fourth notebook of Module 2, where we introduce applied regression analysis. In this lesson, we will build on the data sets and analytic frameworks developed in previous notebooks to explore how regression models can help us quantify relationships between program participation and outcomes of interest. We'll begin with linear regression, which allows us to estimate how continuous outcomes-such as quarterly wages-vary across individual characteristics and participation patterns. We'll then extend these ideas to logistic regression, which is used when outcomes are categorical, such as whether an individual is employed or not.
+
+In this notebook, we will reintroduce our familiar fact table at the individual-program level and use it to construct models that explain variation in outcomes based on demographic factors, prior experience, and participation indicators. These models allow us to move beyond descriptive comparisons and begin estimating the magnitude and direction of relationships, providing a foundation for more advanced causal analyses in future lessons.
+
+Previously, our focus was on cohort analysis-tracking groups of individuals over time to compare their outcomes following a common reference point, such as program entry or exit. Regression analysis builds on this by allowing us to formally control for multiple factors simultaneously, isolating the unique association between each predictor and the outcome. In doing so, we can better understand how different characteristics and experiences contribute to observed differences in employment and wage outcomes.
+
+By the end of this notebook, you will be able to specify and interpret both linear and logistic regression models using program data, assess model fit, and understand how these tools can be applied to policy and evaluation contexts. This provides an essential analytic bridge between descriptive analyses and more rigorous impact evaluation methods, such as propensity score matching and causal modeling.
+
+## The Purpose of these Notebooks
+
+You will now have the opportunity to apply the skills covered in both modules thus far to restricted use Arkansas data. With your team, you will carry out a detailed analysis of this data and prepare a final project showcasing your results.
+
+These workbooks are here to help you along in this project development by showcasing how to apply the techniques discussed in class to the Arkansas data. Part of this notebook will be technical - providing basic code snippets your team can **modify** to begin parsing through the data. As always, however, there will also be an applied data literacy component of these workbooks, and it should help you develop a better understanding of the structure and use of the underlying data even if you never wrote a line of code.
+
+The timeline for completing these workbooks will be provided on the training website and communicated to you in class.
+
+::: {.callout collapse="true"}
+# Technical setup
+
+This workbook will leverage both SQL and R coding concepts, so we need to set up our environment to connect to the proper database and run R code only accessible in packages external to the basic R environment. Typically, throughout these workbooks, we use SQL for the majority of data exploration and creation of the analytic frame, and then read that analytic frame into R for the descriptive analysis and visualization.
+
+**Note:** If you would like to view the material to establish your own environment for running the code displayed in this notebook, you can expand the following "Environment Setup" section by clicking on its heading.
+
+::: {.panel-tabset}
+## SQL Setup
+
+For working with the database directly using SQL, the easiest way is to still copy the commands from this notebook into a script in DBeaver. As a reminder, the steps to do so are as follows:
+
+To create a new .sql script:
+
+1.  Open DBeaver, located on the ADRF Desktop. The icon looks like this:
+
+    ![](images/dbeaver.png)
+
+2.  Establish your connection to the database by logging in. To do this, double-click `Redshift11_projects` on the left hand side, and it will ask for your username and password. Your username is `adrf\` followed by the name of your U: drive folder - for example, `adrf\John.Doe.T00112`. Your password is the same as the **second** password you used to log in to the ADRF - if you forgot it, you **adjust it in the ADRF management portal!**
+
+    After you successfully establish your connection, you should see a green check next to the database name, like so:
+
+    ![](images/success.png)
+
+3.  In the top menu bar, click **SQL Editor** then **New SQL Script**:
+
+    ![](images/new_script.png)
+
+4.  To test if your connection is working, try pasting the following chunk of code into your script:
+```{sql, eval=FALSE,  eval=FALSE}
+    SELECT * 
+    FROM tr_state_impact_ada_training.dim_person
+    LIMIT 5
+```
+
+    Then run it by clicking the run button next to the script, or by pressing CTRL + Enter.
+
+5.  You should then be able to see the query output in the box below the code.
+
+
+## R Setup
+
+#### Install Packages {.unnumbered}
+
+Because we have left the world of the Foundations Module and entered a new workspace, we need to re-install packages that are not native to the base R environment. **We only need to do this once - this workflow for programming in R is identical to that outside the ADRF.**
+
+::: callout-note
+In the ADRF, you are limited to installing packages available on the Comprehensive R Archive Networks, commonly referred to as CRAN. CRAN is the primary centralized repository for R packages. Packages must meet certain requirements before they can become available on CRAN. Outside the ADRF, you can install packages available on other repositories, such as those accessible on Github repositories.
+:::
+
+To install a package, in the console in R studio, type the following:
+
+```{r, eval=FALSE}
+install.packages('INSERT_PACKAGE_NAME')
+```
+
+For example, to install the package `RJDBC` (for establishing our connection to the database), you should type:
+
+```{r, eval=FALSE}
+install.packages("RJDBC")
+```
+
+If you run this, you should see a set of messages in your console similar to the below:
+
+![](images/RJDBC_install.png)
+
+After running this, `RJDBC` will be installed for you within your ADRF workspace. You will not need to re-install it each time you log back into the workspace.
+
+There are two simple ways to identify if a package has already been installed in your environment:
+
+1.  You can run `library(INSERT_PACKAGE_NAME)`, and if it returns an error like the following, it has not been installed properly:
+
+![](images/error.png)
+
+2.  You can manually check in the bottom right pane inside R Studio by selecting the Packages tab and seeing if the package is available. Packages should be sorted alphabetically and those with a check beside them have not just already been installed, but also loaded into the environment for use:
+
+![](images/package_pane.png)
+
+**To install all of the packages you will need for this notebook, please run the following:**
+
+```{r, eval=FALSE}
+install.packages("RJDBC")
+install.packages("tidyverse")
+install.packages("dbplyr")
+install.packages('emmeans')
+```
+
+Additionally, in order to establish our database connection in R, please install the following custom package that has already been uploaded into the P: drive of this workspace:
+
+```{r, eval=FALSE}
+install.packages("P:/tr-state-impact-ada-training/r_packages/ColeridgeInitiative_0.1.2.zip")
+library(ColeridgeInitiative)
+```
+
+If you are using R for the first time in this workspace, you should use the `install_new()` function to install key packages for your workflows.
+
+```{r, eval=FALSE}
+install_new()
+```
+
+**NOTE** You only have to run `install_new()` once, not each time you start Rstudio.
+
+#### Load Libraries {.unnumbered}
+
+After installing these packages, we next need to load them to make them available in our R environment. This is identical to the procedure we followed in the Foundations Module
+
+```{r}
+library(ColeridgeInitiative)
+library(tidyverse)
+library(dbplyr)
+library(zoo) ## need to install
+```
+:::
+
+:::
+
+
+#### Establish Database Connection {.unnumbered}
+
+To load data from the Redshift server into R, we need to first set up a connection to the database. The following command will prompt you for password and establish the connection
+
+:::{.callout-tip}
+NOTE, here we add the option so that the redshift connection can have more memory, in this case 16gb of RAM. This can help if the data you are trying to read into R is large.
+:::
+
+```{r, eval=FALSE}
+
+options(java.parameters = c("-XX:+UseConcMarkSweepGC", "-Xmx16000m"))
+gc()
+
+con <- adrf_redshift(usertype = "training")
+```
+
+
+
+# Data set construction
+For this notebook, we need a modified version of the data we constructed last notebook.
+In this query, we find the previous quarter of wages for each person, for the last quarter they worked prior to entering UI, as well as the sum of the previous 4 quarters they worked prior to UI. We also count the number of quarters they worked in the two years prior to entering UI.
+
+We finally join these data to the demographic information in the `nb_cohort` table.
+
+```{sql, eval=FALSE}
+
+WITH quarter_info AS (
+    SELECT 33::int AS target_year_quarter_key
+),
+wage_data AS (
+    SELECT person_key, year_quarter_key, ui_quarterly_wages
+    FROM tr_state_impact_ada_training.fact_person_ui_wage fpuw 
+),
+prior_ui_quarterly_wages AS (
+    -- most recent quarter BEFORE target with ui_quarterly_wages
+    SELECT
+        wd.person_key,
+        wd.year_quarter_key,
+        wd.ui_quarterly_wages,
+        ROW_NUMBER() OVER (PARTITION BY wd.person_key ORDER BY wd.year_quarter_key DESC) AS rn_recent
+    FROM wage_data wd
+    JOIN quarter_info qi ON wd.year_quarter_key < qi.target_year_quarter_key
+),
+year_sum AS (
+    -- sum of ui_quarterly_wages in the last 4 quarters (one year) prior to target
+    SELECT
+        wd.person_key,
+        SUM(wd.ui_quarterly_wages) AS yearly_sum_prior
+    FROM wage_data wd
+    JOIN quarter_info qi 
+      ON wd.year_quarter_key BETWEEN qi.target_year_quarter_key - 4 AND qi.target_year_quarter_key - 1
+    GROUP BY wd.person_key
+),
+activity_2yr AS (
+    -- count of prior quarters with NON-NULL ui_quarterly_wages in the last 8 quarters (two years)
+    SELECT
+        wd.person_key,
+        COUNT(DISTINCT wd.year_quarter_key) AS quarters_active_prior_2yr
+    FROM wage_data wd
+    JOIN quarter_info qi 
+      ON wd.year_quarter_key BETWEEN qi.target_year_quarter_key - 8 AND qi.target_year_quarter_key - 1
+     AND wd.ui_quarterly_wages IS NOT NULL
+    GROUP BY wd.person_key
+)
+SELECT
+   cur.person_key,
+    cur.gender ,
+    cur.education ,
+    cur.age ,
+    cur.eth_recode ,
+    cur.co_enrolled ,
+    pw.ui_quarterly_wages AS ui_quarterly_wages_prior_quarter,
+    ys.yearly_sum_prior,
+    a2.quarters_active_prior_2yr
+FROM ( select a.person_key, a.gender, a.education, a.age, a.eth_recode, a.co_enrolled
+	from tr_state_impact_ada_training.nb_cohort a
+	group by 1,2,3,4,5,6) cur
+LEFT JOIN prior_ui_quarterly_wages pw
+  ON cur.person_key = pw.person_key AND pw.rn_recent = 1
+LEFT JOIN year_sum ys
+  ON cur.person_key = ys.person_key
+LEFT JOIN activity_2yr a2
+  ON cur.person_key = a2.person_key;
+```
+
+This SQL code creates an object named `reg_data`, which has the data above, plus the wage information for the most recent quarter that follows their UI claim. This can be 0 or NULL, which would indicate non-employment.
+
+```{sql, eval=FALSE}
+
+with wage_data as (
+    select
+        ncm.person_key,
+        ncm.gender,
+        ncm.education, 
+        ncm.age,
+        ncm.eth_recode,
+        ncm.co_enrolled,
+        ncm.ui_quarterly_wages_prior_quarter,
+        ncm.yearly_sum_prior,
+        ncm.quarters_active_prior_2yr,
+        fpuw.ui_quarterly_wages,
+        row_number() over (
+            partition by ncm.person_key
+            order by fpuw.year_quarter_key asc
+        ) as rn
+    from tr_state_impact_ada_training.nb_cohort_matching ncm
+    left join tr_state_impact_ada_training.fact_person_ui_wage fpuw
+        on ncm.person_key = fpuw.person_key
+       and (fpuw.year_quarter_key > 33 or fpuw.ui_quarterly_wages is null)
+)
+select *
+from wage_data
+where rn = 1;
+
+
+```
+
+
+## Final data cleaning
+In this dplyr step, we recode some variables so they are more easily compared, and do some modification of variables so that numeric variables are all numeric. 
+
+We categorize the `education` variable into logical categorical levels, and we also do this for age as well.
+
+We create the variable `wp_enroll`, which is 1 for anyone who participated in Wagner-Peyser or any combination of Wagner-Peyser and some other program.
+
+Finally, to make interpretation of our regression model easier, we z-score the prior wage variables, so that a 1 unit change in these corresponds to a 1 standard deviation change in wages, instead of a change in 1 dollar.
+
+```{r}
+#| label: data-clean
+
+reg_data <- reg_data |> 
+  select(person_key, gender, education, age, eth_recode, co_enrolled, ui_quarterly_wages_prior_quarter,
+         yearly_sum_prior, quarters_active_prior_2yr,ui_quarterly_wages ) |>
+    mutate(across(c(quarters_active_prior_2yr , yearly_sum_prior, ui_quarterly_wages_prior_quarter), ~ replace_na(as.numeric(.x), 0))) |>
+  filter(gender != 'Unknown',
+         as.numeric(age ) >= 16) |> 
+  mutate(edu_cat = case_when(education <12 ~ 'No HS',
+                             education == 12 ~ 'HS/GED',
+                             education %in% c(13:15) ~ 'Assoc/Some College',
+                             education == 16 ~ 'Bachelors',
+                             education %in% c(17:19) ~ 'Graduate degree',
+                            TRUE  ~ NA_character_ ),
+         age_n = as.numeric(age), 
+         age_cat = case_when(age_n <25 ~ '16-25',
+                             age_n >=25 & age_n <35 ~ '25-34',
+                             age_n >=35 & age_n <45 ~ '35-44',
+                             age_n >=45 & age_n <55 ~ '45-54',
+                             age_n >=55 & age_n <65 ~ '55-64',
+                             age_n >=65 ~ '65+',
+                             TRUE  ~ NA_character_),
+         wp_enroll = if_else(grepl("wp", co_enrolled, ignore.case = T), 1, 0),
+         scale_prior_wages  = scale(ui_quarterly_wages_prior_quarter),
+         scale_prior_year_wage = scale(as.numeric(yearly_sum_prior) ) ,
+         quarters_active_prior_2yr = ifelse(is.na(as.numeric(quarters_active_prior_2yr)) ==T, 0,as.numeric(quarters_active_prior_2yr))) |>
+  select(person_key, age_n, gender, eth_recode, edu_cat, age_cat, wp_enroll, scale_prior_wages, scale_prior_year_wage,quarters_active_prior_2yr , ui_quarterly_wages) 
+
+
+head(reg_data, n = 50)
+```
+
+```{r}
+DBI::dbWriteTable(con,DBI::Id(schema = "tr_state_impact_ada_training", table = "nb_analysis_frame"),
+  reg_data,                             # your data.frame
+  overwrite = TRUE,               # or append = TRUE
+  row.names = FALSE )
+```
+
+
+# Linear regression example - Wage data after UI Claims
+
+The first model we will consider is the linear regression model.
+
+This model estimates how several factors are associated with an individual's UI quarterly wages (ui_quarterly_wages), while holding the others constant. Specifically:
+
+`gender` and `age_cat` represent demographic characteristics that may influence wage levels.
+
+`wp_enroll` indicates whether the individual participated in the Wagner-Peyser workforce program, allowing us to compare expected wages for participants versus non-participants.
+
+`scale(wages_prior_quarter)` adjusts for prior earnings, standardized to have a mean of zero and a standard deviation of one. This ensures that prior wages are included as a continuous control variable without affecting the scale of the coefficients.
+
+Together, the model estimates the average change in quarterly wages associated with each predictor, after accounting for the others. In other words, it helps isolate the independent contribution of demographic factors, prior wages, and program enrollment to current wage outcomes.
+
+```{r}
+#| label: regression-1
+
+
+linear_model <- lm( ui_quarterly_wages ~ gender +  age_cat + edu_cat + wp_enroll + scale_prior_wages +quarters_active_prior_2yr , data=reg_data )
+
+
+```
+
+
+
+## Summary of the model
+The `summary()` function will summarize the results of the regression model.
+
+When applied to a fitted regression model in R, the `summary()` function provides a detailed statistical summary of the model's results.
+
+For linear models (created with `lm()`), `summary()` displays:
+
+Coefficients: The estimated effect of each predictor on the outcome, including the intercept.
+
+Standard errors, t-values, and p-values: Used to assess whether each coefficient is statistically different from zero.
+
+Residual statistics: Measures of how well the model fits the data, including the residual standard error and degrees of freedom.
+
+R-squared and Adjusted R-squared: Indicators of how much variation in the outcome is explained by the model.
+
+F-statistic: A test of the overall significance of the regression model.
+
+
+In short, summary() translates the fitted model into interpretable numerical results, allowing you to evaluate both the size and the significance of each predictor's effect.
+
+
+```{r}
+#| label: regression-2
+
+summary(linear_model)
+
+```
+
+In this situation, the coefficient for Wagner-Peyser enrollment is negative, while theoretically it should be positive. This may suggest that we have selectivity with respect to program participation. We will revisit this later. 
+
+We also see significant effects of prior quarter wages and number of quarters worked in the previous 2 years.
+
+## Generating adjusted means
+
+The **`emmeans`** (Estimated Marginal Means) package in R provides a powerful framework for interpreting fitted models, such as linear or logistic regressions. When we fit a model with multiple predictors, the raw coefficients can be difficult to interpret-especially when they involve categorical variables or interactions. The `emmeans` package helps translate those model results into meaningful, interpretable summaries.
+
+When `emmeans()` produces its estimates, it is essentially doing three things:
+
+1. **Reconstructing predicted values from the model.**  
+   After a model is fit (e.g., using `lm()` or `glm()`), `emmeans` uses the estimated regression coefficients to calculate the **expected value of the outcome** for specified levels of one or more predictors. These are sometimes called *model-based means* or *predicted margins*.
+
+2. **Averaging (or "marginalizing") over other variables in the model.**  
+   To isolate the effect of one predictor (e.g., `wp_enroll`), `emmeans` holds that variable at each of its levels (e.g., enrolled vs. not enrolled) while averaging over the observed or reference values of all other predictors in the model.  
+   - For **categorical predictors**, it averages across the levels, usually weighted by sample size (or equally if specified).  
+   - For **continuous covariates**, it typically uses the mean (or another reference value).  
+   This produces *adjusted means*-the expected outcome at each category or condition, *adjusted for* other variables in the model.
+
+3. **Presenting the results on a meaningful scale.**  
+   - For **linear models**, estimates are presented directly on the outcome scale (e.g., predicted quarterly wages).  
+   - For **logistic regression** and other generalized linear models, the underlying model is fit on the *link* scale (e.g., log-odds), but `emmeans` can transform results back to the **response scale** (e.g., probabilities).  
+     Using `type = "response"` tells `emmeans` to report results in the metric that's easiest to interpret-such as the predicted probability of employment or participation.
+
+---
+
+### In Short
+
+You can think of `emmeans` as a tool that answers questions like:
+
+> "What would the average wage be for men versus women, assuming all other variables stayed the same?"
+
+It doesn't change the model, it simply uses the fitted model to generate **adjusted, interpretable summaries** that reflect the relationships estimated by the regression.
+
+:::{.callout}
+You will need to install the `emmeans` package, using `install.packages('emmeans')`
+:::
+
+
+```{r}
+#| label: regression-3
+
+library(emmeans) 
+
+emmeans(linear_model, ~age_cat + gender + wp_enroll)
+
+```
+
+
+## Graphing the adjusted means
+
+This code first computes the estimated adjusted means for each combination of age_cat and gender using the fitted regression model linear_model. These means represent the predicted average wages, adjusted for other variables in the model.
+
+The plot() function from emmeans automatically produces a base ggplot object showing these estimates and their confidence intervals. The second part of the code adds custom labels and a title using labs(), clarifying that the plot displays the model-adjusted wage averages by age and gender group.
+
+In essence, this visualization helps interpret how expected wages differ across demographic subgroups, holding other model predictors constant.
+
+```{r}
+#| label: regression-4
+#| fig-width: 10
+#| fig-height: 8
+#| fig-dpi: 300
+
+mymeans <- data.frame(emmeans(linear_model, ~age_cat + gender+ wp_enroll))
+
+mymeans |> 
+  ggplot( aes(x = age_cat, y = emmean, color = gender)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+  facet_wrap(~ wp_enroll) +
+  labs(
+    x = NULL,
+    y = "Estimated Wage",
+    title = "Adjusted Means by W-P Enrollment Status"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
+
+
+
+# Logistic regression example - Participation in Wagner-Peyser after a UI Claim
+
+The model below fits a logistic regression predicting the probability that an individual participated in the Wagner-Peyser (WP) program.
+
+In this model, the outcome variable `wp_enroll` is binary, indicating whether each individual was enrolled in the WP program (1) or not (0). The predictors-`age_cat`, `gender`, and `wages_prior_quarter`-represent characteristics that may influence the likelihood of program participation.
+
+Because the model uses the binomial family, it estimates relationships on the log-odds scale: each coefficient reflects how a one-unit change in a predictor (or a change in category, for categorical variables) is associated with the change in the log-odds of participating in the program, holding other variables constant.
+
+By including demographic factors and prior earnings, the model provides an estimate of the probability of WP enrollment based on observable characteristics. This is an important step toward understanding selection into programs-an issue we'll explore more deeply in the next lesson on propensity score methods, where similar models are used to estimate participation probabilities for use in matching and causal inference analyses.
+
+```{r}
+#| label: logreg1
+
+logreg_model <- glm( wp_enroll ~ age_cat + gender + edu_cat + scale_prior_wages +quarters_active_prior_2yr , data = reg_data, family = binomial)
+
+```
+
+## Summary of the model
+For logistic or generalized linear models (created with glm()), `summary()` reports coefficient estimates, standard errors, and significance tests, but the coefficients are on the link scale (e.g., log-odds for logistic regression).
+
+```{r}
+#| label: logreg2
+
+summary(logreg_model)
+```
+In this model summary, we see that there is a relatively linear trend with older individuals being less likely to participate in Wagner-Peyser, that there is no difference between men and women, and individuals with higher previous wages and with either a High school/GED degree, or High School not comlete, are more likely to participate in Wagner-Peyser.
+
+## Generating adjusted means
+
+Here, we calculate the adjusted means of the probability of participating in the Wagner-Peyser program. To obtain probability estimates, we specify `type = "response"` to get the probability scale. If we do not do this, the estimates will be on the log-odds scale and will be harder to interpret.
+
+To see the effect of the scaled wages, we can specify values to estimate the adjusted means at, here we specify values of 0 and 1, corresponding to values of average wages(0), and higher than average wages(1)
+```{r}
+#| label: logreg3
+
+emmeans(logreg_model, ~age_cat +scale_prior_wages ,
+        at = list("scale_prior_wages" = c(0, 1)),
+         type = "response")
+
+```
+
+## Graphing the adjusted means
+
+In this graph, we see that the probability of enrollment in Wagner-Peyser is highest for younger individuals with higher than average wages. We also see the educational attainment differences, with those with a HS/GED or No High School, having higher probabilities of being in the program.
+
+```{r}
+#| label: logreg4
+#| fig-width: 10
+#| fig-height: 8
+#| fig-dpi: 300
+
+mymeans_log <- data.frame(emmeans(logreg_model, ~age_cat + edu_cat + scale_prior_wages,
+                                  at = list("scale_prior_wages" = c(0, 1)),
+                        type = "response"))
+
+mymeans_log |> 
+  ggplot( aes(x = age_cat, color = factor(scale_prior_wages), y = prob)) +
+  geom_point(position = position_dodge(width = 0.5),size = 3) +
+  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), width = 0.1, position = position_dodge(width = 0.5)) +
+  facet_wrap(~ edu_cat) +
+  labs(
+    x = "Age group",
+    y = "Probability of Enrollment",
+    title = "Estimated Probability of Enrollment in Wagner-Peyser by Wage and Age"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+
+```
+
+# Next Steps: Applying the notebook to your project
+
+This workbook applies the concepts of Difference-in-Differences analysis to the Arkansas data and demonstrates how this method can be used to evaluate program impacts using longitudinal wage records. In this notebook, we showed how to create treatment and time indicators, estimate a DiD model using fixed effects, and visualize the results using a trend plot. These tools help isolate how wages change for program participants relative to similar nonparticipants, providing stronger evidence of program impact than simple before-and-after comparisons.
+
+As you work on your team projects, consider whether your outcomes and program of interest can be structured in a pre/post format similar to the approach used here. If your data include repeated observations over time-such as quarterly wages, monthly employment, or annual program measures-you may be able to apply a DiD framework to assess whether a program or event led to meaningful changes. This method is especially useful when randomized experiments are not possible and when you need to separate true program effects from broader trends affecting everyone in the system. As you develop your project analyses, think about how Difference-in-Differences can complement your descriptive findings and help strengthen the causal story you present in your team's final report.

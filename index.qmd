@@ -1,0 +1,36 @@
+# Preface {.unnumbered}
+
+This e-book contains the class notebooks for the Coleridge 2025 Value Data Collaborative Applied Data Analytics Class examining student return on investment metrics and thresholds in the Pennsylvania State System of Higher Education (PASSHE).
+
+© 2025 The Coleridge Initiative, Inc
+
+# Value Data Collaborative 2025 class
+
+The Gates Foundation funded an Applied Data Analytics training class delivered by the Coleridge, in partnership with the Institute for Higher Education Policy (IHEP). The training class focused on the linkage of post-secondary student enrollment and completion information for PASSHE institutions, linked to employment and wage outcomes. Accepted class participants learned and applied data analytic approaches to PASSSHE data and Pennsylvania Department of Labor and Industry employment and wage data to better understand the return on investment for PASSHE students using the Postsecondary Value Framework as a guiding framework.
+
+This repository contains the [class materials](https://coleridge-initiative.github.io/ada-2025-vdc/) for the  Applied Data Analytics training program.
+
+**Data Sources Used for the Class:**
+
+-   PASSHE Enrollment and Completion Records
+-   PASSHE Financial Aid records
+-   PADLI Wage records
+-   American Community Survey microdata
+
+**Class Program**
+
+Day 1 - Overview, Project Scoping, and Privacy, Confidentiality, and Ethics
+
+Day 2 - Value Framework 
+
+Day 3 - Dataset Introductions and Project Scoping & Exploratory Data Analysis
+
+Day 4 - Cross-Sectional & Cohort Analysis
+
+Day 5 - Project Status Presentations
+
+Day 6 -  Analysis
+
+Day 7 - Measurement, Missingness and Inference
+
+Day 8 - Data Visualization, Communicating Results and Exporting Data

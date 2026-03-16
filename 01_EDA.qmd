@@ -1,0 +1,2683 @@
+---
+author: "Corey Sparks, Ph.D., Sufiyan Syed, and Daron Holman"
+title: Notebook 1 - Exploratory Data Analysis (EDA)
+toc: true
+toc_depth: 3
+toc_float:
+  collapsed: no
+  smooth_scroll: yes
+toc_location: left
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    df-print: paged
+execute:
+  eval: false
+---
+
+![](images/ada_sticker.png){fig-align="center"}
+
+# Introduction
+```{r setup, include=FALSE}
+#HIDE THIS CHUNK FROM KNITTED OUTPUT
+knitr::opts_chunk$set(include=TRUE, echo=TRUE, eval = FALSE,  warning = FALSE, fig.align = 'center')  #results=‘hide’) # needs to delete results=‘hide’
+```
+
+Welcome to the first notebook of Module 2 of the State IMPACT Collaborative Applied Data Analytics training! The notebooks in this module will dive into State IMPACT data that has been provided by the State of Arkansas. This State IMPACT data has also been linked to various other sources. All of these data tables will be provided to you in this workspace, and these notebooks will introduce them and provide possible research avenues and other ways to connect and utilize these data tables.
+
+In this workbook, we're going to be `discovering` the primary employment outcome-focused data sets we will use in this course: The **Participant Individual Record Layout**, or PIRL data, the **Arkansas Unemployment Insurance (UI) wage records** and the **Arkansas Quarterly Census of Employment and Wages (QCEW) data**. All data sets are available in standard formats across states, so any code introduced in this notebook should be portable to your own state data. As you know, there are many other data sources available for you as part of this training - we will walk through the primary ones in optional supplemental sections. For each data set, we will work to answer the following key data discovery questions:
+
+-   **What is the structure of the data set?** What is the layout of the data? What variables are available? What are their types? How do we interpret the meaning of a single row?
+
+-   **What is the coverage of the data set?** What years, geographic regions, and other subgroups are covered by the data?
+
+-   **What is the distribution of the variables in the data set?** Are there missing observations, outliers, and other aspects we need to adjust for later in analysis? Are there any interesting patterns worth further investigation?
+
+In order to access these tables, you will need to follow the instructions in the technical setup section below. For those not interested in learning details of R and SQL programming, the technical section can be skipped, and the rest of the notebook read through to understand the structure of the available data and general data analysis concepts. However, we do encourage everyone to follow the technical set up at least once and get into the data as much as possible, as nothing can replace digging through the data yourself to truly understand it.
+
+## The Purpose of these Notebooks
+
+You will now have the opportunity to apply the skills covered in both modules thus far to restricted use Arkansas data. With your team, you will carry out a detailed analysis of this data and prepare a final project showcasing your results.
+
+These workbooks are here to help you along in this project development by showcasing how to apply the techniques discussed in class to the Arkansas data. Part of this notebook will be technical - providing basic code snippets your team can **modify** to begin parsing through the data. As always, however, there will also be an applied data literacy component of these workbooks, and it should help you develop a better understanding of the structure and use of the underlying data even if you never writer a line of code.
+
+The timeline for completing these workbooks will be provided on the training website and communicated to you in class.
+
+
+# Technical Setup
+:::{.callout collapse="true"}
+
+Code chunks in this notebook will be provided in both SQL and R, so follow the setup sections below if you are interested in establishing your own SQL and R environments for running the code.
+
+Typically, throughout these workbooks, we use SQL for the majority of data exploration and creation of the analytic frame, and then read that analytic frame into R for the descriptive analysis and visualization. You will see options for writing SQL code in R, but not vice versa. We discuss this approach in a later section.
+
+
+::: {.tabset}
+## SQL Setup
+
+For working with the database directly using SQL, the easiest way is to still copy the SQL commands from this notebook (available within the `SQL Query` tab views) into a script in DBeaver. As a reminder, the steps to do so are as follows:
+
+1.  Open DBeaver, located on the ADRF Desktop. The icon looks like this
+
+![](images/dbeaver.png)
+
+2.  Establish your connection to the database by logging in. To do this, double-click `Redshift11_projects` on the left hand side, and it will ask for your username and password. Your username is `adrf\` followed by the name of your U: drive folder - for example, `adrf\JOhn.Doe.T00141`. Your password is the same password that you use to log into the ADRF.
+
+If you do not know your username, it is the name of your U: drive folder.
+
+After you successfully establish your connection, you should see a green check next to the database name, like so:
+
+![](images/success.png)
+
+3.  In the top menu bar, click **SQL Editor** then **New SQL Script**:
+
+![](images/new_script.png)
+
+4.  To test if your connection is working, try pasting the following chunk of code into your script:
+
+```{sql, eval=FALSE}
+SELECT *
+FROM ds_ar_dws.ui_wages_lehd
+LIMIT 5
+```
+
+Then run it by clicking the run button next to the script, or by pressing CTRL + ENTER.
+
+5.  You should then be able to see the query output in the box below the code.
+:::
+
+::: {.callout collapse="true"}
+## R Setup
+
+#### Install Packages {.unnumbered}
+
+Because we have left the world of the Foundations Module and entered a new workspace, we need to re-install packages that are not native to the base R environment. **We only need to do this once - this workflow for programming in R is identical to that outside the ADRF.**
+
+::: callout-note
+In the ADRF, you are limited to installing packages available on the Comprehensive R Archive Networks, commonly referred to as CRAN. CRAN is the primary centralized repository for R packages. Packages must meet certain requirements before they can become available on CRAN. Outside the ADRF, you can install packages available on other repositories, such as those accessible on Github repositories.
+:::
+
+To install a package, in the console in R studio, type the following:
+
+```{r, eval=FALSE}
+install.packages('INSERT_PACKAGE_NAME')
+```
+
+For example, to install the package `RJDBC` (for establishing our connection to the database), you should type:
+
+```{r, eval=FALSE}
+install.packages("RJDBC")
+```
+
+If you run this, you should see a set of messages in your console similar to the below:
+
+![](images/RJDBC_install.png)
+
+After running this, `RJDBC` will be installed for you within your ADRF workspace. You will not need to re-install it each time you log back into the workspace.
+
+There are two simple ways to identify if a package has already been installed in your environment:
+
+1.  You can run `library(INSERT_PACKAGE_NAME)`, and if it returns an error like the following, it has not been installed properly:
+
+![](images/error.png)
+
+2.  You can manually check in the bottom right pane inside R Studio by selecting the Packages tab and seeing if the package is available. Packages should be sorted alphabetically and those with a check beside them have not just already been installed, but also loaded into the environment for use:
+
+![](images/package_pane.png)
+
+**To install all of the packages you will need for this notebook, please run the following:**
+
+```{r, eval=FALSE}
+install.packages("RJDBC")
+install.packages("tidyverse")
+install.packages("dbplyr")
+```
+
+Additionally, in order to establish our database connection in R, please install the following custom package that has already been uploaded into the P: drive of this workspace:
+
+```{r, eval=FALSE}
+install.packages("P:/tr-state-impact-ada-training/r_packages/ColeridgeInitiative_0.1.2.zip")
+library(ColeridgeInitiative)
+```
+
+If you are using R for the first time in this workspace, you should use the `install_new()` function to install key packages for your workflows.
+
+```{r, eval=FALSE}
+install_new()
+```
+
+**NOTE** You only have to run `install_new()` once, not each time you start Rstudio.
+
+#### Load Libraries {.unnumbered}
+
+After installing these packages, we next need to load them to make them available in our R environment. This is identical to the procedure we followed in the Foundations Module
+
+```{r}
+library(ColeridgeInitiative)
+library(tidyverse)
+library(dbplyr)
+library(zoo) #may need to install with install.packages('zoo') first
+```
+
+
+:::
+
+
+#### Establish Database Connection {.unnumbered}
+
+To load data from the Redshift server into R, we need to first set up a connection to the database. The following command will prompt you for password and establish the connection:
+
+```{r}
+con <- adrf_redshift(usertype = "training")
+```
+
+:::
+
+
+# Basics of Exploratory Data Analysis
+
+In this notebook we discuss exploratory data analysis (EDA). EDA is usually the first step in any plan of analysis. You can think of it as "kicking' the tires" of a data table and seeing what might be possible to accomplish with the data. In other words, EDA is about seeing what research questions might be possible to answer with the data, how strong any conclusions drawn from the data might be and any considerations needed to strengthen those conclusions, considering any additional data sources to combine with the data to further your insights or any caveats you might need to place on the data, etc.
+
+Typical EDA tasks include examining the size and shape of a data set, inspecting the unit of observation and coverage of the data set, inspecting individual columns and their data types (i.e. are they categorical or numeric?), and checking the data for missingness and outliers.
+
+In this notebook, we will be conducting some exploratory data analysis on our Arkansas data. Before we start programming, however, it will be helpful to have some more background information on the available data tables.
+
+
+# Arkansas UI wage data: `ds_ar_dws.ui_wages_lehd`
+
+The **Arkansas UI wage data**, stored on Redshift as `ds_ar_dws.ui_wages_lehd`, provides information on all UI-covered employment in Arkansas. This file is supplied to the U.S. Census Bureau for use in processing the Quarterly Workforce Indicators and the Longitudinal Employer-Household Dynamics (LEHD) program, and represents approximately 95% of private non-farm wage and salary employment for establishments located in the state.
+
+::: callout-note
+### R package `dbplyr`
+
+In the examples that follow, a new package for interacting with databases without writing SQL code is also shown. The `dbplyr` package interfaces with a database using standard `dplyr` and `tidyverse` workflows, and complementary code is shown for all SQL query examples. Just like the SQL code, this should be run and executed from R using the connection we established in the collapsed "Environment Setup" section above.
+:::
+
+## Structure
+
+Let's begin answering our key data discovery questions. First - what is the structure of the UI wage data? There are two dimensions to this question:
+
+-   What variables are available in the UI Wage data?
+-   What does each row in the UI Wage data represent?
+
+To start, just like in the Foundations Module, let's glance at a few rows of the UI Wage data:
+
+> Note: Because the output is easier to parse through on an HTML document, we have the SQL option written so that you can directly copy and paste them into DBeaver. If you would like to run them in RStudio, and not use the `dbplyr` code, you can do so by using the workflow we introduced in the Foundations Module by first running `qry <- "INSERT SQL CODE"` and then `dbGetQuery(con, qry)`.
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dws.ui_wages_lehd 
+LIMIT 5
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "ui_wages_lehd")) %>%
+  head(n=5)
+```
+:::
+
+We can see that there are 16 columns available in the UI Wage data. The [UI Wage data dictionary](P:\tr-enrollment-to-employment\Data_Dictionaries\LEHD%20UI%20Wage%20File%20Format.pdf) (Right-click on link to open) on the P: drive contains detailed descriptions of each variable.
+
+Just like with the LAUS data, the data dictionary descriptions, while helpful, do not provide the entire context for these variables. We also need to have a clear definition of what each observation - or row - in the UI wage records represents.
+
+To know what we are aiming for, we can find the total number of rows in the UI Wage data:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*)
+FROM ds_ar_dws.ui_wages_lehd
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "ui_wages_lehd")) %>%
+  tally()
+```
+:::
+
+Let's think about the three categories of variables that might appear in our data set to uniquely define our rows.
+
+### Unit of observation
+
+The first category to consider is *variables that describe the unit of observation*. Recall that the unit of observation refers to the type of entity or object about which data is collected. This could be a person, a organization, a state, or any other entity that is the focus of data collection.
+
+In the case of the UI Wage data, our unit of observation is the person - the individual receiving wages in the data set. Besides leveraging background information on the nature of the data, we can identify this because `ssn` is a person-level variable in our data set representing the smallest single unit identified in the data.
+
+Importantly, recall that the unit of observation alone does not necessarily define a row for our data set. We can test this by count the number of unique hashed social security numbers in our data relative to the total number of rows:
+
+::: {.panel-tabset .unnumbered .unlisted}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*), COUNT(DISTINCT(employee_ssn))
+FROM ds_ar_dws.ui_wages_lehd
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "ui_wages_lehd")) %>%
+  summarise(
+    n_rows = n(),
+    n_people =  n_distinct(employee_ssn)
+  )
+```
+:::
+
+We see that there are far fewer unique `ssn` values than total rows in the table. This indicates that `ssn` alone does not define a row of our data - some individuals must appear in the data more than once. Why might there be multiple observations for the same individual? One of the common reasons is what we will discuss next: time.
+
+### Period of observation
+
+One of the most common reasons why this might be the case is that data about each unit of observation is observed at multiple points in time, with information stored in separate rows corresponding to each distinct point in time. Recall that we can refer to the variables describing the *period of observation* as the *time dimension(s)*. They represent how often the data is captured or updated. However, note that not every data set will have variables representing the period of observation.
+
+In the UI Wage data, the period of observation is represented by the variables `reporting_period_year` and `reporting_period_quarter`, which indicate the calendar year and quarter associated with the employment observation, respectively. Note that in other instances, **date** variables often encode information about the period of observation.
+
+Let's look at the amount of unique combinations of `employee_ssn`, `reporting_period_year`, and `reporting_period_quarter` combined:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis as (
+  SELECT DISTINCT reporting_period_year, reporting_period_quarter, employee_ssn
+  FROM ds_ar_dws.ui_wages_lehd
+)
+SELECT COUNT(*)
+FROM DIS
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+# tally finds the number of rows
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "ui_wages_lehd")) %>%
+
+  distinct(reporting_period_year, reporting_period_quarter, employee_ssn) %>% 
+  tally()
+```
+:::
+
+We still see a difference here between the number of unique person-quarters and the total number of rows from our first query. Perhaps there are some other variables that help constitute a row in the data, or there may be duplicate observations.
+
+### Attributes
+
+What about the other 13 variables described in the data dictionary?
+
+These remaining variables represent the information that the wage records contains about our person-quarter observations. There are several different types of attributes that we can see in our data dictionary:
+
+-   Individual attributes: `nhr_ui_wage_id`, `employee_first_name` (hashed), `employee_middle_name` (hashed), and `employee_last_name` (hashed) describe the individual associated with the employment observation
+-   Employer attributes: `ui_account_number`, `reporting_unit_number`, `federal_ein`, and `state_ein` describe the employer associated with the employment observation
+-   Employment attributes: `employee_wage_amount`, `hours`, and `weeks` describe information about the employment. `hours` and `weeks` are both not populated.
+-   Miscellaneous: `reference_state`, `reporting_period` (concatenated version of `reporting_period_year` and `reporting_period_quarter`)
+
+Here, with the UI wage records, since an individual could have multiple employers within our *period of observation*, a unique observation should also include the employer. We can verify that claim with the code below:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE, }
+WITH dis as (
+  SELECT DISTINCT reporting_period_year, reporting_period_quarter, employee_ssn, federal_ein 
+  FROM ds_ar_dws.ui_wages_lehd
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>%
+  tbl(in_schema(
+    schema = "ds_ar_dws",
+    table = "ui_wages_lehd"
+  )) %>%
+  distinct(reporting_period_year, reporting_period_quarter, employee_ssn, federal_ein) %>%
+  tally()
+```
+:::
+
+Any duplication at this granularity should be further investigated.
+
+## Coverage
+
+The next step of our exploratory data analysis is to determine the data coverage: what time span, region, and other important subgroups are captured in the data? Luckily, this is pretty straightforward for the UI Wage data: we know that the geographical area is the entire state of Arkansas, and that the group covered is those employed by UI-covered employers. We can confirm this by finding unique values of `reference_state` in the data:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE, }
+
+SELECT DISTINCT(reference_state)
+FROM ds_ar_dws.ui_wages_lehd
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>%
+  tbl(in_schema(
+    schema = "ds_ar_dws",
+    table = "ui_wages_lehd"
+  )) %>%
+  distinct(reference_state)
+```
+:::
+
+We can follow a similar approach for time periods - that being said, because we know the data is tracked over time, it might be helpful to find the number of rows corresponding to each time frame. To do so, we can group our data by quarter, this time using `reporting_period`, which combines `reporting_period_year` and `reporting_period_quarter` into a single string, and aggregate the number of rows.
+
+> Note: On the SQL tab, since we are planning on reading this output into R, we have used the `qry <- "INSERT SQL CODE"` and `dbGetQuery(con, qry)` workflow.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT reporting_period, COUNT(*)
+FROM ds_ar_dws.ui_wages_lehd 
+GROUP BY reporting_period 
+ORDER BY reporting_period
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+counts_by_qtr <- con %>%
+  tbl(in_schema(
+    schema = "ds_ar_dws",
+    table = "ui_wages_lehd"
+  )) %>%
+  select(reporting_period) %>%
+  group_by(reporting_period) %>%
+  tally() %>%
+  ungroup() %>%
+  arrange(reporting_period) %>%
+  collect() # extract data into memory
+
+counts_by_qtr
+
+```
+:::
+
+We can read through the table above and begin to get a feeling for the number of individuals covered in each quarter, but you can also use this same summary data set to quickly calculate our coverage:
+
+```{r}
+counts_by_qtr %>%
+  summarize(
+    min_qtr = min(reporting_period),
+    max_qtr = max(reporting_period)
+  )
+```
+
+From this, we see that the UI Wage data begins in the Q1 2011, and ends in Q4 2022.
+
+We can also find the quarter with the highest number of observations:
+
+```{r}
+counts_by_qtr %>%
+  filter(
+    n == max(n)
+  )
+```
+
+## Select Variable Distribution
+
+The final part of data discovery is investigating the distribution of key variables in our data set, and documenting any irregularities such as missingness, outliers, invalid values, or other issues that need to be addressed in an analysis leveraging these data components. We'll look at a few of the variables from the UI Wage data now, but this type of exploration is more of an art than a science, and the continued exploration of these variables will be an essential component of your project in this program. As a reminder, you are encouraged to use this code as inspiration in your own exploration.
+
+### `reporting_period`
+
+Let's begin by taking the same data pull we just used to examine the data coverage, and plot the data using a simple line plot:
+
+```{r,, fig.width=10, fig.height=6}
+counts_by_qtr %>%
+  ggplot(aes(
+    x = reporting_period,
+    y = as.numeric(n),
+    group = 1
+  )) +
+  geom_line() +
+  labs(x = "Quarter", y = "Count", title = "Count of UI Wage Recipients by Quarter") +
+  # rotate x-axis text to avoid quarter overlap
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Immediately, we can see a seasonal pattern with higher values in Q2 & Q3 annually, and a decline in records in 2020, which should make sense given Arkansas's economic situation at the time.
+
+Does anything else catch your eye? Take some time to examine this graph.
+
+### `employee_wage_amount`
+
+We can also examine the patterns in the average wage received by employee during each period. Here is a query to perform this:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT  AVG(employee_wage_amount) as avg_wage, reporting_period
+FROM ds_ar_dws.ui_wages_lehd 
+GROUP BY reporting_period 
+ORDER BY reporting_period
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+avg_by_qtr <- con %>%
+  tbl(
+    in_schema(schema = "ds_ar_dws", table = "ui_wages_lehd")
+  ) %>%
+  select(employee_wage_amount, reporting_period) %>%
+  group_by(reporting_period) %>%
+  summarize(
+    avg_wage = mean(employee_wage_amount)
+  ) %>%
+  ungroup() %>%
+  arrange(reporting_period) %>%
+  collect()
+
+avg_by_qtr
+```
+:::
+
+And we can visualize the data using a simple line plot:
+
+```{r, fig.width=10, fig.height=6}
+avg_by_qtr %>%
+  ggplot(aes(
+    x = reporting_period,
+    y = as.numeric(avg_wage),
+    group = 1
+  )) +
+  geom_line() +
+  labs(x = "Quarter", y = "Average Wage", title = "Average of UI Wages Received by Quarter") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+We also see similar seasonality in average wages received, with Q4 and Q1 within each year showing higher average wages, but unlike the total number of recipients in the previous plot, we do not see any decline in 2020.
+
+# Arkansas QCEW data: `ds_ar_dws.qcew`
+
+The QCEW, or **Quarterly Census of Employment and Wages**, is a data set containing information on UI-covered employers in Arkansas, and often works in tandem with the UI wage data. You can find the [QCEW data dictionary](P:\tr-enrollment-to-employment\Data_Dictionaries\QCEW%20Record%20Layouts%201190.xlsx) on the P drive.
+
+## Structure
+
+First, just as we did in the previous section, we will explore the basic structure of the data by examining the first few rows of the table:
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT *
+FROM ds_ar_dws.qcew
+LIMIT 5
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>% 
+  head(5)
+```
+:::
+
+We see there are 113 columns in the table. Consult the data dictionary for descriptions of these columns.
+
+Similar to the one for the UI wage records, the QCEW data dictionary does not specifically define a row. As a reference point, we can find the total number of rows in the data:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*)
+FROM ds_ar_dws.qcew
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  tally()
+```
+:::
+
+### Unit of observation
+
+QCEW data is reported by employer, so the unit of observation is therefore the employer. The employer, though, is referenced in a handful of variables-including the federal Employer Identification Number (EIN), UI account number (or state ein), and reporting unit number-and may defined differently based on the situation. Here, we will define an employer by their federal EIN (`ein` in the data), as this corresponds to the employer paying into the UI trust fund and also allows for cross-state linkages. That being said, multi-unit employers may appear as separate rows with the same federal EIN but different reporting unit numbers.
+
+Let's find the number of unique employers in the data and compare that to the total number of rows:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*), COUNT(DISTINCT(ein))
+FROM ds_ar_dws.qcew
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  summarise(
+    n_rows = n(),
+    n_employers = n_distinct(ein)
+  )
+```
+:::
+
+We can go a step further and include the reporting unit number to account for multi-unit establishments:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT ein, reporting_unit_number
+  FROM ds_ar_dws.qcew
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  distinct(ein, reporting_unit_number) %>%
+  tally()
+```
+:::
+
+Beyond this, based on our exploration of the UI wage records, it makes sense that a row is not solely defined by an employer or an employer unit - recall that this information is tracked over time.
+
+### Period of observation
+
+Whereas the period of observation in the UI Wage data is represented by `reporting_period_year` and `reporting_year_quarter`, the QCEW contains `reference_year` and `reference_quarter` variables.
+
+We can find the number of unique combinations of `ein`, `reporting_unit_number`, `reference_year`, and `reference_quarter` combined:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT ein, reporting_unit_number, reference_year, reference_quarter
+  FROM ds_ar_dws.qcew
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>%
+  tbl(in_schema(
+    schema = "ds_ar_dws",
+    table = "qcew"
+  )) %>%
+  distinct(ein, reporting_unit_number, reference_year, reference_quarter) %>%
+  tally()
+```
+:::
+
+As you can see, we don't have complete de-duplication at this level. Upon further investigation, you may find some federal eins that correspond to multiple state eins, or vice versa, or some other examples of potential duplication. That is all to say that if you plan to use the QCEW data, just be careful for any misaligned duplication!
+
+### Attributes
+
+As we saw earlier, the QCEW has a large number of fields, and you should consult the data dictionary for the definitions of these fields. To see the column titles, we can use the queries below.
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+SHOW COLUMNS from table projects.ds_ar_dws.qcew
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  names()
+```
+:::
+
+Between looking at the list of column names above and the data dictionary, you can see that these other variables contain a wealth of employer-related information, such as industry, location, and employment statistics.
+
+## Coverage
+
+We will proceed by assessing the coverage of the QCEW data, first to confirm that all employers are located in Arkansas, which is tracked with the `state_fips` variable:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+
+SELECT DISTINCT(state_fips)
+FROM ds_ar_dws.qcew
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>%
+  tbl(in_schema(
+    schema = "ds_ar_dws",
+    table = "qcew"
+  )) %>%
+  distinct(state_fips)
+```
+:::
+
+You may have noticed some other variables in the QCEW data that characterize an employer's location, beyond the state. In fact, one of those variables is `county_code`, which as the name implies, contains the county of the corresponding employer. We can see if we have data on employers in each county in Arkansas by counting the number of unique counties:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+
+SELECT COUNT(DISTINCT(county_code))
+FROM ds_ar_dws.qcew
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>%
+  tbl(in_schema(
+    schema = "ds_ar_dws",
+    table = "qcew"
+  )) %>%
+  summarise(
+    n_counties = n_distinct(county_code)
+  )
+```
+:::
+
+For reference, there are 75 counties in Arkansas, and none of the county codes have changed at least since the 1970s. But there seem to be more county codes here, so we can examine these specific codes:
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT DISTINCT(county_code)
+FROM ds_ar_dws.qcew
+GROUP BY county_code
+ORDER BY county_code
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  distinct(county_code) %>% 
+  arrange(county_code)
+
+```
+:::
+
+The `county_code` values of `000`, `900 - 999` are not real county fips codes, and employers with these codes need to be further investigated if using employer location information in your analysis.
+
+We can also look at coverage from a time perspective, counting the number of observations in the QCEW file by `reference_year` and `reference_quarter`:
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+
+SELECT count(*) as n,
+q.reference_year, q.reference_quarter
+FROM ds_ar_dws.qcew q
+GROUP BY q.reference_year, q.reference_quarter
+ORDER BY q.reference_year, q.reference_quarter
+
+```
+
+## `dbplyr` query
+
+```{r, }
+cnt_by_quarter <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  group_by(reference_year, reference_quarter) %>% 
+  summarise(n=n()) %>% 
+  ungroup() %>% 
+  arrange(reference_year, reference_quarter) %>%
+  collect()
+
+cnt_by_quarter
+```
+:::
+
+```{r, fig.width=10, fig.height=7}
+cnt_by_quarter %>% 
+  # combine year and quarter into one variable separated by "-"
+  mutate(period = paste(reference_year, reference_quarter, sep = "-")) %>% 
+  ggplot(aes(x = period, y = as.numeric(n), group = 1))+
+  geom_line()+
+  theme(axis.text.x = element_text(angle =45, hjust=1))
+```
+
+In this plot, we see continuous growth into 2020, when we see a large spike in the number of observations - this might indicate an underlying data quality issue in 2020.
+
+## Select Variable Distribution
+
+### `naics_code`
+
+One of the commonly-used variables from the QCEW table is `naics_code`, which contains the North American Industry Classification System (NAICS) codes that correspond to specific industries. The codes traditionally exist at the six-digit level, and can be truncated into broader codes (ex. `624120` converted to `62`).
+
+At the six-digit level, let's see how many unique NAICS codes exist in the QCEW table:
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT COUNT(DISTINCT(naics_code))
+FROM ds_ar_dws.qcew
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  summarize(num_codes = n_distinct(naics_code))
+```
+:::
+
+That's a lot of codes! In contrast, let's see if working with the 2-digit codes might be a bit more feasible:
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE, }
+SELECT COUNT(DISTINCT(SUBSTRING(naics_code, 1, 2)))
+FROM ds_ar_dws.qcew
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  distinct(naics_code) %>%
+  collect() %>% #substring doesn't work when translating to postgresql so need to pull into R first
+  summarize(n_distinct(substring(naics_code, 1, 2)))
+```
+:::
+
+This is a bit more workable. Let's find the most common two-digit NAICS codes across all rows:
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT SUBSTRING(naics_code, 1, 2), COUNT(*)
+FROM ds_ar_dws.qcew
+GROUP BY SUBSTRING(naics_code, 1, 2)
+ORDER BY 2 DESC --2 references the second column in the SELECT statement
+LIMIT 5
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "qcew")) %>%
+  group_by(naics_code) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  collect() %>%
+  #substring doesn't work when translating to postgresql so need to pull into R first
+  # also convert n to numeric since it pulls in as a character variable
+  mutate(
+    two_digit = substring(naics_code, 1, 2),
+    n = as.numeric(n)
+  ) %>%
+  group_by(two_digit) %>%
+  summarize(tot = sum(n)) %>%
+  arrange(desc(tot)) %>%
+  head(5)
+```
+:::
+
+There are a handful of NAICS-related lookup tables available for you in the `ds_ar_dws` schema. At the two-digit level, the most relevant table will be `naics_sector`, but just keep in mind that the current table has ranges of codes in some places (ex. 44-45), which make it a bit more complicated to join. For reference, the two-digit NAICS code of 62 corresponds to Health Care and Social Assistance.
+
+# Linking UI Wages and QCEW
+
+By joining the QCEW data to the UI wage records, we can look at wage patterns while taking into account the characteristics of the employers, such as their industry, for example. In this section, we will do just that, merge the `ds_ar_dws.ui_wages_lehd` table to the QCEW table `ds_ar_dws.qcew`.
+
+To join the two tables, we will use the `federal_ein` in the UI wages and the `ein` in the QCEW, which both correspond to the federal EIN. We also need to join on the reference period, or the year and quarter combination to ensure we are getting the wages for the correct period. Before doing so, though, to ensure we are not joining multiple NAICS codes per employer, we will master the QCEW table to find the most common industry code for each EIN in a given quarter (and year). This approach is not perfect, but does still join for cases where there are missing reporting unit number values in the UI wage records but not in the QCEW.
+
+And remember that as we saw earlier, there may still be some duplication in the UI wage records unaccounted for in this approach, which could be mediated through additional mastering.
+
+We can use the first two digits of the NAICS codes to obtain the industrial sector for each business, then average the wages across these sectors for each quarter in 2019.
+
+> Note: Due to the complexity of the join, we have not provided `dbplyr` code in this example.
+
+::: panel-tabset
+
+## SQL Query
+
+```{sql, eval=FALSE}
+
+with qcew_rank as (
+	select ein, reference_year, reference_quarter, substring(naics_code, 1, 2) as naics_sub, 
+		ROW_NUMBER ()  OVER (PARTITION BY  ein, reference_year, reference_quarter order by count(*) desc) as rank 
+	from ds_ar_dws.qcew 
+	group by ein, reference_year, reference_quarter, substring(naics_code, 1, 2)
+),
+qcew_mastered as (
+	select * 
+	from qcew_rank 
+	where rank = 1
+)
+select avg(uwl.employee_wage_amount) as avg_wage,
+ count(distinct uwl.employee_ssn) as n_employee,
+ count(distinct uwl.federal_ein) as n_employers,
+ q.reference_year,
+ q.reference_quarter,
+ naics_sub
+from ds_ar_dws.ui_wages_lehd uwl
+left join qcew_mastered q
+  on (uwl.federal_ein=q.ein 
+    and uwl.reporting_period_year = q.reference_year 
+    and uwl.reporting_period_quarter = q.reference_quarter)
+where q.reference_year = '2019' and naics_sub !='00'
+group by naics_sub, q.reference_year, q.reference_quarter 
+order by naics_sub, q.reference_year, q.reference_quarter
+```
+
+## dbplyr query
+```{r}
+qcew <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dws", table = "qcew"))
+
+uwl <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dws", table = "ui_wages_lehd"))
+
+# Step 1: count observations per ein/year/quarter/naics_sub
+qcew_counted <- qcew %>%
+  mutate(naics_sub = sql("SUBSTRING(naics_code FROM 1 FOR 2)")) %>%
+  group_by(ein, reference_year, reference_quarter, naics_sub) %>%
+  summarise(count_n = n(), .groups = "drop")
+
+# Step 2: for each (ein, year, quarter), rank by count_n
+qcew_ranked <- qcew_counted %>%
+  group_by(ein, reference_year, reference_quarter) %>%
+  arrange(desc(count_n)) %>%
+  mutate(rank = row_number()) %>%
+  ungroup()
+
+# Step 3: keep only rank == 1 (most common naics_sub per ein/year/quarter)
+qcew_mastered <- qcew_ranked %>%
+  filter(rank == 1) %>%
+  select(ein, reference_year, reference_quarter, naics_sub)
+
+# Step 4: join and summarize
+avg_by_naics <- uwl %>%
+  left_join(
+    qcew_mastered,
+    by = c(
+      "federal_ein" = "ein",
+      "reporting_period_year" = "reference_year",
+      "reporting_period_quarter" = "reference_quarter"
+    )
+  ) %>%
+  filter(
+    reporting_period_year == "2019",
+    naics_sub != "00"
+  ) %>%
+  group_by(naics_sub, reporting_period_year, reporting_period_quarter) %>%
+  summarise(
+    avg_wage = mean(employee_wage_amount, na.rm = TRUE),
+    n_employee = n_distinct(employee_ssn),
+    n_employers = n_distinct(federal_ein),
+    .groups = "drop"
+  ) %>%
+  arrange(naics_sub, reporting_period_year, reporting_period_quarter) %>% 
+  collect()
+
+avg_by_naics
+
+```
+
+:::
+
+For the sake of this example, we will identify the specific sectors by two-digit NAICS codes:
+
+-   Agriculture, forestry, fishing and hunting: `11`
+-   Retail Trade: `44-45`
+-   Professional, scientific and technical: `54`
+-   Healthcare and social assistance: `62`
+
+```{r, fig.width=10, fig.height=7}
+avg_by_naics %>%
+  filter(naics_sub %in% c("11", "62", "44", "45", "54")) %>%
+  mutate(sector = case_when(
+    naics_sub == "11" ~ "Agriculture",
+    naics_sub == "44" ~ "Retail - 44",
+    naics_sub == "45" ~ "Retail - 45",
+    naics_sub == "54" ~ "Technical & Professional",
+    naics_sub == "62" ~ "Healthcare"
+  ), 
+  reporting_period = paste(reporting_period_year,reporting_period_quarter, sep = '-')) %>%
+  ggplot(aes(
+    x = reporting_period,
+    y = as.numeric(avg_wage),
+    group = sector,
+    color = sector
+  )) +
+  geom_line() +
+  labs(
+    x = "Quarter",
+    y = "Average Quarterly Wage",
+    title = "Average Wages Received by Quarter",
+    subtitle = "By NAICS Sector in 2019"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+We see that some industries show marked seasonal variation in wages in 2019, while others do not. On average, we can see that one of the Retail industry workers have the lowest wages on average.
+
+::: callout-important
+## Checkpoint
+
+Use the UI Wage and QCEW data dictionaries to identify one or more further variables that might be relevant to your group's analysis. Think through what these variables *should* look like, as well as what issues might arise. Working individually or with your group, examine the distribution of these variables. Document any EDA-related concerns and findings in your project template. Brainstorm as to what the cause of these issues might be, and how they could impact your analysis.
+:::
+
+# WIOA Program data
+
+## What is WIOA Adult Population?
+
+The **Workforce Innovation and Opportunity Act** (WIOA) helps job seekers access employment, education, training, and support services to succeed in the labor market, while connecting employers with skilled workers to compete globally. States align core workforce programs through flexible four-year plans, promoting accountability via public performance goals, fostering regional collaboration, and improving the **American Job Center** (AJC) system. WIOA programs offer career services, job search assistance, workforce preparation, and training through classroom and work-based learning. Serving millions annually, these programs also support business by matching qualified candidates, filling job orders, and providing customized training, delivered through a network of 2,400 AJCs nationwide. 
+
+
+### Types of WIOA programs
+
+The relevant WIOA programs for this notebook and our data include that involve Title I and Title III. WIOA Title I, focused on workforce development activities, includes programs such as the WIOA Youth Program, Adult and Dislocated Worker Program, and Job Corps. WIOA Title III reflects the Wagner-Peyser Employment Service, which provides universal access to job search assistance, labor exchange services, and labor market information for both job seekers and employers, primarily delivered through American Job Centers.
+
+
+## PIRL table `ds_ar_dws.pirl_update`
+
+The **Participant Individual Record Layout** (PIRL) is a standardized data format developed by the U.S. Department of Labor (DOL) for reporting individual-level participant data across various workforce development programs, particularly those funded through the **Workforce Innovation and Opportunity Act** (WIOA). It is used by state workforce agencies and other grantees to report information to the DOL. You can find the [PIRL data dictionary](P:\tr-state-impact-ada-training\Data documentation\JOINTPIRL_Layout.xlsx) on the P drive.
+
+The PIRL contains detailed, longitudinal records on individuals who receive services through WIOA and other programs, including:
+   - Demographics
+   - Details of program participation
+   - Education and barriers
+   - Types of training received
+   - Program outcomes
+
+
+
+## Structure
+
+First, just as we did in the previous section, we will explore the basic structure of the data by examining the first few rows of the table.
+
+::: callout-note
+The PIRL table has over 500 columns, so consulting the data dictionary is essential before approaching the data. In the AR PIRL table, the data also comes from multiple original *sheets*, which are combined to create the file we have access to. The `sheetnameproperty` field tells you what sheet is being shown for a given individual, because a person can participate in multiple WIOA programs, which are stored in the different sheets.
+:::
+
+
+::: panel-tabset
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dws.pirl_update 
+LIMIT 5
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  head() %>% 
+  colnames()
+```
+:::
+
+## EDA of specific fields
+- codebook is at` P:\tr-state-impact-ada-training\Data documentation\PIRL_Layout_withAdultEd.xlsx`
+
+Below we can inspect the number of records and people in each WIOA training service. We also look at the oldest and earliest program related dates, service completion, and the average time in the program. 
+
+::: panel-tabset
+ First, we inspect number of unique people can compare to number of records.
+ 
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT
+  "adult_wioa",
+  COUNT(DISTINCT "social_security_number") AS "npeople",
+  COUNT(*) AS "nrows"
+FROM (
+  SELECT "adult_wioa", "social_security_number"
+  FROM "ds_ar_dws"."pirl_update"
+  WHERE ("sheetnameproperty" = 'Adult')
+) "q01"
+GROUP BY "adult_wioa"
+
+```
+
+## `dbplyr` query
+
+```{r}
+
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  filter(sheetnameproperty == "Adult") %>% 
+  select(adult_wioa, social_security_number) %>%
+  group_by(adult_wioa) %>%
+  summarise(npeople = n_distinct(social_security_number),
+            nrows = n()) 
+
+```
+:::
+
+::: panel-tabset
+next we examine the maximum (most recent) and minimum (oldest) program entry dates
+## SQL Query
+
+```{sql, eval=FALSE}
+
+
+SELECT
+  MIN("date_of_program_entry_wioa") AS "Min Program Entry Date",
+  MAX("date_of_program_entry_wioa") AS "Max Program Entry Date",
+  MIN("date_of_program_exit_wioa") AS "Min Program Exit Date",
+  MAX("date_of_program_exit_wioa") AS "Max Program Exit Date"
+FROM (
+  SELECT "date_of_program_entry_wioa", "date_of_program_exit_wioa"
+  FROM "ds_ar_dws"."pirl_update"
+  WHERE ("sheetnameproperty" = 'Adult' AND "adult_wioa" IN ('1', '2', '3'))
+) "q01"
+
+```
+
+## `dbplyr` query
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  filter(sheetnameproperty == "Adult" & adult_wioa %in% c("1","2","3")) %>%
+  select(date_of_program_entry_wioa, date_of_program_exit_wioa) %>%
+  summarise("Min Program Entry Date" = min(date_of_program_entry_wioa, na.rm = TRUE),
+            "Max Program Entry Date" = max(date_of_program_entry_wioa, na.rm = TRUE),
+            "Min Program Exit Date" = min(date_of_program_exit_wioa, na.rm = TRUE),
+            "Max Program Exit Date" = max(date_of_program_exit_wioa, na.rm = TRUE))
+
+
+```
+:::
+
+
+::: panel-tabset
+Finally let's look at the average time to takes for someone to complete the program by year
+
+## SQL Query
+
+```{sql, eval=FALSE}
+SELECT "year", AVG("time_in_program") AS "Average time in program in days"
+FROM (
+  SELECT
+    "pirl_update".*,
+    "date_of_program_exit_wioa" - "date_of_program_entry_wioa" AS "time_in_program",
+    EXTRACT(year FROM "date_of_program_entry_wioa") AS "year"
+  FROM "ds_ar_dws"."pirl_update"
+  WHERE ("sheetnameproperty" = 'Adult' AND "adult_wioa" IN ('1', '2', '3'))
+) "q01"
+GROUP BY "year"
+ORDER BY "year"
+```
+
+
+## `dbplyr` query
+
+```{r}
+
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  filter(sheetnameproperty == "Adult" & adult_wioa %in% c("1","2","3")) %>%
+  mutate(time_in_program = date_of_program_exit_wioa - date_of_program_entry_wioa,
+         year = lubridate::year(date_of_program_entry_wioa)) %>%
+  group_by(year) %>%
+  summarise("Average time in program in days" = mean(time_in_program)) %>% 
+  arrange(year) 
+```
+:::
+
+### Completers vs non-completers
+
+
+::: panel-tabset
+# Now let's look at types of training services
+# Completion for training service 1
+### SQL code
+
+```{sql, eval=FALSE}
+
+
+SELECT
+  "type_of_training_service_1_wioa",
+  "training_completed_1",
+  COUNT(DISTINCT "social_security_number") AS "freq"
+  FROM "ds_ar_dws"."pirl_update"
+  WHERE ("sheetnameproperty" = 'Adult' AND "adult_wioa" IN ('1', '2', '3'))
+GROUP BY "type_of_training_service_1_wioa", "training_completed_1"
+order by "type_of_training_service_1_wioa", "training_completed_1"
+
+
+```
+ Completion for training service 2
+```{sql, eval=FALSE}
+SELECT
+  "type_of_training_service_2_wioa",
+  "training_completed_2",
+  COUNT(DISTINCT "social_security_number") AS "freq"
+  FROM "ds_ar_dws"."pirl_update"
+  WHERE ("sheetnameproperty" = 'Adult' AND "adult_wioa" IN ('1', '2', '3'))
+GROUP BY "type_of_training_service_2_wioa", "training_completed_2"
+order by "type_of_training_service_2_wioa", "training_completed_2"
+
+ 
+```
+
+Completion for training service 3
+
+```{sql, eval=FALSE}
+
+SELECT
+  "type_of_training_service_3_wioa",
+  "training_completed_3",
+  COUNT(DISTINCT "social_security_number") AS "freq"
+  FROM "ds_ar_dws"."pirl_update"
+  WHERE ("sheetnameproperty" = 'Adult' AND "adult_wioa" IN ('1', '2', '3'))
+GROUP BY "type_of_training_service_3_wioa", "training_completed_3"
+order by "type_of_training_service_3_wioa", "training_completed_3"
+
+```
+
+
+### R code
+
+```{r}
+# Now let's look at types of training services
+# Completion for training service 1
+
+  con %>%
+    tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  filter(sheetnameproperty == "Adult" & adult_wioa %in% c("1","2","3")) %>%
+  select(type_of_training_service_1_wioa, training_completed_1, social_security_number) %>%
+  group_by(type_of_training_service_1_wioa, training_completed_1) %>%
+  summarise(freq = n_distinct(social_security_number)) 
+
+```
+
+
+
+DELETE
+
+```{r}
+ con %>%
+    tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  filter(sheetnameproperty == "Adult" & adult_wioa %in% c("1","2","3")) %>%
+  select(type_of_training_service_1_wioa, training_completed_1, social_security_number) %>%
+  group_by(type_of_training_service_1_wioa, training_completed_1) %>%
+  summarise(freq = n_distinct(social_security_number)) 
+
+```
+
+```{r}
+# Completion for training service 2
+
+  con %>%
+    tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  filter(sheetnameproperty == "Adult" & adult_wioa %in% c("1","2","3")) %>%
+  select(type_of_training_service_2_wioa, training_completed_2, social_security_number) %>%
+  group_by(type_of_training_service_2_wioa, training_completed_2) %>%
+  summarise(freq = n_distinct(social_security_number))
+  
+```
+
+```{r}
+# Completion for training service 3
+
+  con %>%
+    tbl(in_schema(schema = "ds_ar_dws",
+                table = "pirl_update")) %>%
+  filter(sheetnameproperty == "Adult" & adult_wioa %in% c("1","2","3")) %>%
+  select(type_of_training_service_3_wioa, training_completed_3, social_security_number) %>%
+  group_by(type_of_training_service_3_wioa, training_completed_3) %>%
+  summarise(freq = n_distinct(social_security_number))
+
+```
+
+:::
+
+### Co-enrollment in more than 1 program
+
+We may also be interested in whether a program participant is enrolled in more than one WIOA program. In this query, we examine the co-enrollment status between the Wagner-Peyser and Adult WIOA programs. 
+
+```{sql, eval=FALSE}
+
+with wagner as (
+  select
+    p.social_security_number,
+    p.wagner_peyser_employment_service_wioa,
+    p.date_of_program_entry_wioa,
+    p.date_of_program_exit_wioa,
+    p.type_of_training_service_1_wioa as wagner_train1,
+    p.type_of_training_service_1_wioa as wagner_train2,
+    p.type_of_training_service_1_wioa as wagner_train3,
+    cast('wagner_peyser' as varchar) as program2
+  from ds_ar_dws.pirl_update p
+  where p.sheetnameproperty = 'Wagner-Peyser'
+    and p.wagner_peyser_employment_service_wioa = '1'
+  group by 1,2,3,4,5,6,7
+),
+
+adult_wioa as (
+  select
+    p.social_security_number,
+    p.date_of_program_entry_wioa,
+    p.date_of_program_exit_wioa,
+    p.type_of_training_service_1_wioa as aw_train1,
+    p.type_of_training_service_1_wioa as aw_train2,
+    p.type_of_training_service_1_wioa as aw_train3,
+    cast('adult wioa' as varchar) as program1
+  from ds_ar_dws.pirl_update p
+  where p.sheetnameproperty = 'Adult'
+    and p.adult_wioa in (1,2,3)
+  group by 1,2,3,4
+)
+
+select
+  adult_wioa.social_security_number,
+  adult_wioa.date_of_program_entry_wioa,
+  adult_wioa.date_of_program_exit_wioa,
+  adult_wioa.program1,
+  wagner.program2,
+  case
+    when wagner.program2 = 'wagner_peyser' and adult_wioa.program1 is not null then 'dual enrolled'
+    when wagner.program2 is null and adult_wioa.program1 = 'adult wioa' then 'adult wioa only'
+    when wagner.program2 = 'wagner_peyser' and adult_wioa.program1 is null then 'wagner peyser only'
+  end as dualenroll
+from adult_wioa
+full outer join wagner
+  on adult_wioa.social_security_number = wagner.social_security_number
+  and adult_wioa.date_of_program_entry_wioa = wagner.date_of_program_entry_wioa
+order by adult_wioa.date_of_program_entry_wioa;
+
+```
+
+```{r}
+table(coen$dualenroll)
+```
+
+# Next Steps: Applying the workbook to your project
+
+The workbook provides a structure for you to start your EDA process on the data within the scope of your project. The data coverage and row definition for two of the primary data sets in this training is available, allowing you to focus on evaluating the distribution of variables potentially relevant to your analysis. Below, in the [Additional Data Sources] section, we apply the same approach to the other key tables we have access to in this workspace. **You do not need to work through each section, but should review the content at least for the tables you plan to use in your project.** You can expand a specific section by clicking on its header below.
+
+As you evaluate variable distributions, you can start by re-purposing the code in these sections. There are code snippets for distributions of numeric, time-based, and categorical variables that may be appropriate depending on the type of column you are interested in exploring.
+
+In doing so, as recommended in the checkpoint, note your findings in your team's project template. As your project progresses, it will be helpful to look back at these notes, especially in thinking through how to most accurately and best communicate your team's final product to an external audience. Ultimately, the EDA process is an essential step in the project development life cycle, as it provides helpful contextual information on the variables you may choose to use (or not use) in your analysis.
+
+For all of these steps, remember not to take notes or discuss exact results outside the ADRF. Instead, create notes or output inside the ADRF, and store them either in your U: drive or in your team's folder on the P: drive. When discussing results with your team, remember to speak broadly, and instead direct them to look at specific findings within the ADRF. And, as always, feel free to reach out to the Coleridge team if you have any questions as you get used to this workflow!
+
+
+# Additional Data Sources
+
+:::::::::::::: {.callout collapse="true"}
+## Arkansas TANF data: `ds_ar_dhs.tanf_case` and `ds_ar_dhs.tanf_member`
+
+**NOTE: This section is subject to minor changes, as we are in contact with the data provider. We will let you know if we make any modifications to the code.**
+
+The Arkansas TANF data has been provided by the Arkansas Department of Human Services and includes all records of TANF receipt in the state. These records have been transformed into the Chapin Hall data model layout, separated into two files - (1) `ds_ar_dhs.tanf_case`, which contains information by TANF case and (2) `ds_ar_dhs.tanf_member`, which records the TANF data for each person on a case. The [data dictionary](P:\tr-state-impact-ada-training\Data documentation\TANF.xlsx) for these two files is available on the P drive.
+
+### Structure
+
+#### `tanf_case`
+
+Let's take a look at the first few rows of the `tanf_case` table to start:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dhs.tanf_case
+LIMIT 5;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_case")) %>%
+  head(5)
+```
+:::
+
+We can see that there are a lot of columns, and we know that not all may be necessary in defining a row. Based on background information, we know that the unit of observation in this table should be the `case_id` - we can see if a `case_id` may be present in multiple rows by comparing the total number of observations to the number of unique cases present in the data:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*), COUNT(DISTINCT(case_id))
+FROM ds_ar_dhs.tanf_case;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_case")) %>%
+  summarise(
+    n_rows = n(),
+    n_cases = n_distinct(case_id)
+  )
+```
+:::
+
+Like with the QCEW and UI wage data, which is tracked longitudinally, the `tanf_case` file is as well. You may have spotted the second column in the data, `reporting_month`, which tracks cases over time. Let's see if the combination of `case_id` and `reporting_month` defines a row in `tanf_case`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT case_id, reporting_month
+  FROM ds_ar_dhs.tanf_case
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_case")) %>%
+  distinct(case_id, reporting_month) %>%
+  tally()
+```
+:::
+
+Perfect! There's no duplication in the file on the case/month level. Note that for each case/month combination, there are 70 other columns with information at this granularity.
+
+#### `tanf_member`
+
+Let's repeat the same approach for the `tanf_member` table, first looking at the first few rows:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dhs.tanf_member
+LIMIT 5;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_member")) %>%
+  head(5)
+```
+:::
+
+The unit of observation in this table should be the `social_security_number`, a hashed value pertaining to a unique individual. We can see that this table also has a `reporting_month` variable, and we can check if a row can be uniquely defined by combinations at the `social_security_number`/`reporting_month` level:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT social_security_number, reporting_month
+  FROM ds_ar_dhs.tanf_member
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_member")) %>%
+  distinct(social_security_number, reporting_month) %>%
+  tally()
+```
+:::
+
+There appears to be some duplication at this level - in fact, with a little additional code, you can see that there are some instances where an individual may appear to be on multiple cases in a given month (perhaps a data quality issue) and others where the row seems to be exactly duplicated besides one or two columns not pertaining to the case.
+
+Additionally, by comparing the total number of rows in the `tanf_member` and `tanf_case` tables, we can see that `tanf_member` has more records. This should intuitively make sense, as multiple individuals can be on the same case - if you want to examine individuals, rather than households, enrolled in the program, keep in mind that you should be primarily using the `tanf_member` file.
+
+### Coverage
+
+In examining the QCEW and UI wage tables, we started by looking at the geographic coverage. You may have identified the variable `state_fips_code` existing in both `tanf_case` and `tanf_member` - we have current concerns about their data quality and are working with the data provider to rectify these issues. In the meantime, we will not explore these columns, and just focus on the time-based coverage.
+
+#### `tanf_case`
+
+We can start by finding the minimum and maximum values of `reporting_month`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT MIN(reporting_month), MAX(reporting_month)
+FROM ds_ar_dhs.tanf_case
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_case")) %>%
+  summarize(
+    min_month = min(reporting_month),
+    max_month = max(reporting_month)
+  )
+```
+:::
+
+Recall that we can separately review the time coverage of a data set by counting the number of observations within each time frame. We can take this a step further in the `tanf_case` data by counting the number of cases receiving TANF (`tanf = TRUE`) by `reporting_month`:
+
+> Note: Every row in `tanf_case` has `tanf = TRUE`!
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT reporting_month, COUNT(*) as n_cases
+FROM ds_ar_dhs.tanf_case 
+WHERE tanf = 'TRUE'
+GROUP BY reporting_month
+ORDER BY reporting_month
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+cases_by_month <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_case")) %>%
+  filter(tanf == 'TRUE') %>%
+  group_by(reporting_month) %>%
+  summarize(
+    n_cases = n()
+  ) %>%
+  ungroup() %>%
+  arrange(reporting_month) %>%
+  collect()
+
+cases_by_month
+```
+:::
+
+We can then graph this in a line chart:
+
+```{r}
+cases_by_month %>%
+  mutate(reformat_date = as.yearmon(as.character(reporting_month), "%Y%m")) %>%
+  ggplot(aes(x = reformat_date, y = as.numeric(n_cases) )) +
+  geom_line()
+```
+
+There do not appear to be any gaps in coverage within this time, but it is interesting to see the number of TANF cases declining in the data from 2018 onward.
+
+#### `tanf_member`
+
+We can apply the same approach to the `tanf_member` table:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT MIN(reporting_month), MAX(reporting_month)
+FROM ds_ar_dhs.tanf_member
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_member")) %>%
+  summarize(
+    min_month = min(reporting_month),
+    max_month = max(reporting_month)
+  )
+```
+:::
+
+As expected, `tanf_member` has the same `reporting_month` range as `tanf_case`.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+
+SELECT reporting_month, COUNT(*) as n
+FROM ds_ar_dhs.tanf_member
+WHERE tanf = 'TRUE'
+GROUP BY reporting_month
+ORDER BY reporting_month
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+rows_by_month <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_member")) %>%
+  filter(tanf == 'TRUE') %>%
+  group_by(reporting_month) %>%
+  summarize(
+    n = n()
+  ) %>%
+  ungroup() %>%
+  arrange(reporting_month) %>%
+  collect()
+
+rows_by_month
+```
+:::
+
+We can then graph this in a line chart:
+
+```{r}
+rows_by_month %>%
+  mutate(reformat_date = as.yearmon(as.character(reporting_month), "%Y%m")) %>%
+  ggplot(aes(x = reformat_date, y = as.numeric(n) )) +
+  geom_line()
+```
+
+We can see that the same relative pattern in the number of observations over time is present in the `tanf_member` data as well.
+
+### Select Variable Distribution
+
+#### `tanf_case` - `child_only_case`
+
+One variable in the `tanf_case` file that might be of particular interest is `child_only_case`, which is an indicator variable tracking if a case is child-only. Given the focus of the class on enrollment to *employment*, in analyzing those receiving TANF benefits, it may be useful to filter out these cases.
+
+We can look at the distribution of observations by this variable:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT child_only_case, COUNT(*) 
+FROM ds_ar_dhs.tanf_case
+GROUP BY child_only_case 
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_case")) %>%
+  group_by(child_only_case) %>%
+  summarize(n = n())
+```
+:::
+
+There are cases, though, that might be child-only at certain points but at others. Keep this in mind if you plan to use the TANF data, as this variable, perhaps leveraged with some in the `tanf_member` table mentioned in the following section, could be useful in narrowing in on a population of interest.
+
+#### `tanf_member` - `work_eligible_individual`
+
+The `tanf_member` table allows for a more individualized view of those on the TANF cases. Building off of the previous section, a separate variable that might be of use, this time in `tanf_member` is `work_eligible_individual`. This variable is categorical, with different numerical values corresponding to separate categories describing the individual's work eligibility status.
+
+Let's look at the possible values within `work_eligible_individual` across all observations in the table:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT work_eligible_individual, COUNT(*)  as n
+FROM ds_ar_dhs.tanf_member 
+GROUP BY work_eligible_individual 
+ORDER BY COUNT(*) DESC
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "tanf_member")) %>%
+  group_by(work_eligible_individual) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+```
+:::
+
+By referencing the data dictionary (`WELIG` in the file), we can see that the most common value corresponds to work-eligible and either an adult or minor head of household receiving assistance. Observations with some of these other values may be worth filtering out, though.
+
+There are additional variables tracking related characteristics, such as `family_affiliation`, `relationship_to_head_of_household`, and `date_of_birth` that could be useful to consider as well when honing in on an analytic frame.
+::::::::::::::
+
+::::::::::::::::: {.callout collapse="true"}
+## Arkansas SNAP data: `ds_ar_dhs.snap_case` and `ds_ar_dhs.snap_individual`
+
+**NOTE: This section is subject to minor changes, as we are in contact with the data provider. We will let you know if we make any modifications to the code.**
+
+The Arkansas SNAP data has been provided by the Arkansas Department of Human Services and includes all records of SNAP receipt in the state. These records have been transformed into two files similar to the Chapin Hall data model layout for TANF data - (1) `ds_ar_dhs.snap_case`, which contains information by SNAP case and (2) `ds_ar_dhs.snap_individual`, which breaks the SNAP data down by person within a case. The [data dictionary](P:\tr-enrollment-to-employment\Data_Dictionaries\SNAP-LDP-parameters-for-participation.pdf) for the two files is available on the P drive, starting with the case-level data on p.13.
+
+### Structure
+
+#### `snap_case`
+
+Let's take a look at the first few rows of the `snap_case` file to start:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dhs.snap_case
+LIMIT 5;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  head(5)
+```
+:::
+
+We can see that there are a lot of columns, and we know that not all may be necessary in defining a row. Based on background information, we know that the unit of observation in this table should be the `case_unit_id` - we can see if a `case_unit_id` may be present in multiple rows by comparing the total number of observations to the number of unique cases present in the data:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*), COUNT(DISTINCT(case_unit_id))
+FROM ds_ar_dhs.snap_case;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  summarise(
+    n_rows = n(),
+    n_cases = n_distinct(case_unit_id)
+  )
+```
+:::
+
+Like with the QCEW and UI wage data, which is tracked longitudinally, the `snap_case` file is as well. You may have spotted the second column in the data, `file_month`, which tracks cases over time. Let's see if the combination of `case_unit_id` and `file_month` defines a row in `snap_case`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis as (
+  SELECT DISTINCT case_unit_id, file_month
+  FROM ds_ar_dhs.snap_case
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  distinct(case_unit_id, file_month) %>%
+  tally()
+```
+:::
+
+There appears to be a minor amount of duplication at this level when comparing this output to that of the total number of rows. If you plan on using the SNAP caseload file, just be aware that you might need to devise an approach to handle multiple observations at the case/month level. Note that these duplicates may have contrasting values for the other 27 variables in the table.
+
+#### `snap_individual`
+
+Let's repeat the same approach for the `snap_individual` table, first looking at the first few rows:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dhs.snap_individual
+LIMIT 5;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_individual")) %>%
+  head(5)
+```
+:::
+
+The unit of observation in this table should be the individual. However, parsing through the output, you might recognize a few variables that could be referencing an individual - in particular, `individual_id` and `ssn`. Because we eventually seek to link SNAP recipients to data from other sources, all of which contain the same hashed social security number, we will opt to work with `ssn`. We can see that this table also has a `file_month` variable, as well as a `case_unit_id` variable, and can check if a row is uniquely defined by combinations at the `ssn`/`case_unit_id`/`file_month` level:
+
+> Note: There are actually more distinct combinations of `individual_id`/`case_unit_id`/`file_month` than `ssn`/`case_unit_id`/`file_month`. There may also be some cases where the `file_month` is outside the bounds of the `cert_start_date` and `cert_end_date` variables.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis as (
+  SELECT DISTINCT ssn, case_unit_id, file_month
+  FROM ds_ar_dhs.snap_individual
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_individual")) %>%
+  distinct(ssn, case_unit_id, file_month) %>%
+  tally()
+```
+:::
+
+For reference, we can compare this count to the total number of observations in `snap_individual`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*)
+FROM ds_ar_dhs.snap_individual
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_individual")) %>%
+  tally()
+```
+:::
+
+Like with `snap_case`, there appears to be some duplication, which is probably expected if there is known duplication at the `case_unit_id`/`file_month` granularity. This does not render the table unusable; just proceed with caution.
+
+Additionally, by comparing the total number of rows in the `snap_individual` and `snap_case` tables, we can see that `snap_individual` has more records. This should intuitively make sense, as multiple individuals can be on the same case - if you want to examine individuals, rather than households, enrolled in the program, keep in mind that you should be primarily using the `snap_individual` file.
+
+> You might be wondering why the observations should be unique at the individual/case/month level, rather than at the indivdual/month level. Stay tuned, as we will be covering one of the reasons in the next subsection!
+
+### Coverage
+
+In examining the QCEW and UI wage tables, we started by looking at the geographic coverage. We can do the same here before moving on to time coverage.
+
+#### `snap_case`
+
+There are a handful of variables pertaining to location in the `snap_case` table. We can start at the broadest level, looking at the distribution of values for `address_state`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT address_state, COUNT(*)
+FROM ds_ar_dhs.snap_case
+GROUP BY address_state
+ORDER BY COUNT(*) DESC
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  group_by(address_state) %>%
+  summarize(
+    n = n()
+  ) %>%
+  arrange(desc(n))
+```
+:::
+
+Interesting! There appear to be a small amount of cases with an `address_state` outside of Arkansas. **We are investigating this further with SNAP data experts in Arkansas.** We could proceed to looking at a more granular variable such as `address_zip_code`, but without further information on the `address_state` distribution, will not do so here.
+
+Moving on to time coverage, we can start by finding the minimum and maximum values of `file_month`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT MIN(file_month), MAX(file_month)
+FROM ds_ar_dhs.snap_case
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  summarize(
+    min_month = min(file_month),
+    max_month = max(file_month)
+  )
+```
+:::
+
+Recall that we can separately review the time coverage of a data set by counting the number of observations within each time frame. We can take this a step further in the `snap_case data` by counting the number of cases receiving SNAP (`active_participant = '1'`) by `file_month`:
+
+> As you might have guessed, one of the reasons an individual can be present on multiple cases in the same month in the `snap_individual` table is that all cases may not be active at the same time.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+--NEED TO USE COUNT(DISTINCT(...)) BECAUSE WE KNOW THAT A ROW IS NOT ALWAYS 
+--UNIQUE AT CASE/MONTH
+SELECT file_month, COUNT(DISTINCT(case_unit_id)) as n_cases
+FROM ds_ar_dhs.snap_case
+WHERE active_participant = '1'
+GROUP BY file_month
+ORDER BY file_month
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+# need to use n_distinct(case_unit_id) because a row is not always unique at
+# the case/month level
+cases_by_month_snap <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  filter(active_participant == '1') %>%
+  group_by(file_month) %>%
+  summarize(
+    n_cases = n_distinct(case_unit_id)
+  ) %>%
+  ungroup() %>%
+  arrange(file_month) %>%
+  collect()
+
+cases_by_month_snap
+```
+:::
+
+We can then graph this in a line chart:
+
+> Note: In the table above, we can see that there are active cases corresponding to our earliest and latest `file_month` values in the data.
+
+```{r}
+cases_by_month_snap %>%
+  ggplot(aes(x=file_month, y =as.numeric( n_cases) )) +
+  geom_line()
+```
+
+While there do not appear to be any gaps in coverage, we can see a massive dip in unique cases in the latter half of 2019. In the next subsection exploring coverage in `snap_individual`, we will see if we uncover a similar pattern at the person level. **We are in contact with the data providers about this potential issue to confirm it is not a data quality one.**
+
+#### `snap_individual`
+
+Like in `snap_case`, a similar variable exists in `snap_individual`: `state`. Let's explore its possible values:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT state, COUNT(*)
+FROM ds_ar_dhs.snap_individual
+GROUP BY state
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_individual")) %>%
+  group_by(state) %>%
+  summarize(
+    n = n()
+  )
+```
+:::
+
+As opposed to the caseload file, which tracks the case unit's current address, the individual table's one pertains to the state extract of the data. As we can see, in `snap_individual`, this value is always "AR." Unfortunately, there are not any other variables tracking an individual's location in `snap_individual`, so we cannot look at the geographical coverage at a more granular level.
+
+Turning to the time coverage, we can apply the same approach we did to the `snap_case` table, first finding the earliest and latest `file_month` values:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT MIN(file_month), MAX(file_month)
+FROM ds_ar_dhs.snap_individual;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_individual")) %>%
+  summarise(
+    min_month = min(file_month),
+    max_month = max(file_month)
+  )
+```
+:::
+
+Oddly enough, the earliest record in the individualized table is a month later than that of the caseload table. Their latest records align, though. **We are investigating this with the data provider.**
+
+In looking at the `snap_individual` table in isolation, we cannot identify those on inactive cases. That said, we can isolate records for those on active SNAP cases by joining to the `snap_case` table, and then aggregating at the `file_month` level.
+
+> Note: There are a small subset of observations in `snap_individual` that do not exist in `snap_case` at the case/month level. We will be missing those observations here, because even if we used a `LEFT JOIN`, we still would not be able to confirm these records existing in `snap_individual` but not `snap_case` are active cases.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+
+SELECT si.file_month, COUNT(DISTINCT(si.ssn)) as n_people
+FROM ds_ar_dhs.snap_individual si 
+JOIN ds_ar_dhs.snap_case sc on (si.case_unit_id = sc.case_unit_id and si.file_month = sc.file_month and sc.active_participant = '1')
+GROUP BY si.file_month
+ORDER BY si.file_month
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+person_snap <- con %>%
+  tbl(in_schema(schema = "ds_ar_dhs",
+      table = "snap_individual"))
+
+case_snap <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  filter(active_participant == '1') 
+
+# can join in R using ..._join functions in tidyverse
+people_by_month_snap <- person_snap %>%
+  inner_join(case_snap, by = c("case_unit_id", "file_month")) %>%
+  group_by(file_month) %>%
+  summarize(
+    n_people = n_distinct(ssn)
+  ) %>%
+  ungroup() %>%
+  arrange(file_month) %>%
+  collect()
+
+people_by_month_snap
+```
+:::
+
+As before, it might be a bit easier to get a sense of trends in a plot:
+
+```{r}
+people_by_month_snap %>%
+  ggplot(aes(x = file_month, y = as.numeric(n_people) )) +
+  geom_line()
+```
+
+We can see a similar trend, albeit on a different magnitude, with a massive decline in late 2019. Ignoring the massive drop followed by a spike in 2020, there appears to a decline in the number of people receiving SNAP benefits over the lifetime of the data. Interestingly enough, even though we see a similar trend with the number of cases as well, the number of cases appear to be decreasing at a slower rate relative to the number of people.
+
+### Select Variable Distribution
+
+#### `snap_case` - `benefit_amount_issued_mo`
+
+The `benefit_amount_issued_mo` variable in the `snap_case` table may be of interest to those planning on working with the SNAP data, as it contains the monthly sum of all SNAP benefits issued to a case unit. It is possible to then compare this column to `benefit_amount_redeemed`, either within a month or over the lifetime of a case to determine if a case (likely a household) used their entire allotment.
+
+In isolation, though, we can still learn more about the distribution of this variable. Although it might be tempting to read the entire table into R, doing so may crash our R session by exhausting our workspace memory allocation. We can still get a rough idea of the distribution of the data by finding the minimum and maximum values, as well as values for regular percentiles:
+
+> Note: A *k* percentile is a value that corresponds to the point at which *k* percentage of observations fall at or below the given value. For example, the median, or 50th percentile, corresponds to the point at which half of the observations fall at or below that point.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+--THE FUNCTION TO CALCULATE PERCENTILES IN REDSHIFT IS APPROXIMATE PERCENTILE_DISC
+SELECT MIN(benefit_amount_issued_mo) AS min_val, 
+	APPROXIMATE PERCENTILE_DISC(.25) WITHIN GROUP (ORDER BY benefit_amount_issued_mo) AS percentile_25,
+	APPROXIMATE PERCENTILE_DISC(.5) WITHIN GROUP (ORDER BY benefit_amount_issued_mo) AS median,
+	AVG(benefit_amount_issued_mo) AS average,
+	APPROXIMATE PERCENTILE_DISC(.75) WITHIN GROUP (ORDER BY benefit_amount_issued_mo) AS percentile_75,
+	MAX(benefit_amount_issued_mo) AS max_val
+FROM ds_ar_dhs.snap_case sc 
+WHERE active_participant = '1'
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+# quantile will find percentiles in R
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_case")) %>%
+  filter(active_participant == '1') %>%
+  summarise(
+    min_val = min(benefit_amount_issued_mo),
+    percentile_25 = quantile(benefit_amount_issued_mo, .25),
+    median = median(benefit_amount_issued_mo),
+    average = mean(benefit_amount_issued_mo),
+    percentile_75 = quantile(benefit_amount_issued_mo, .75),
+    max_val = max(benefit_amount_issued_mo)
+  )
+```
+:::
+
+Be careful in interpreting this distribution. According to the data dictionary, the values imply two decimals, meaning that 500 = \$5.00.
+
+#### `snap_individual` - `age`
+
+Given the focus of the class on enrollment to *employment*, in analyzing those receiving SNAP benefits, it might be useful to filter out those below a certain age. Let's compare the number of records where an individual may be considered working age (for this example using 16+):
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*), CASE 
+  WHEN age >= 16 then 'yes'
+  WHEN age < 16 then 'no'
+  ELSE 'missing' END AS working_age_ind
+from ds_ar_dhs.snap_individual 
+GROUP BY CASE WHEN age >= 16 then 'yes' WHEN age < 16 then 'no' ELSE 'missing' END
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhs",
+                table = "snap_individual")) %>%
+  mutate(
+    working_age_ind = case_when(
+      age >= 16 ~ "yes",
+      age < 16 ~ "no",
+      TRUE ~ "missing"
+    )
+  ) %>%
+  group_by(working_age_ind) %>%
+  summarize(
+    n = n()
+  )
+```
+:::
+
+We can see that while the majority of records are of individuals that are at least 16, there are many that are not. With this column in particular, keep an eye out for unrealistic birth dates, such as those in the 1800s.
+:::::::::::::::::
+
+::::::::::::::::::: {.callout collapse="true"}
+## Arkansas Department of Higher Education (DHE) data: `ds_ar_dhe.student_enrollment_table` and `ds_ar_dhe.graduated_student_table`
+
+The Arkansas higher education data has been provided by the Arkansas Department of Higher Education and includes records of students enrolled in public and private colleges and universities in the state of Arkansas. There are many tables within this schema, majority of them being reference tables. The two tables we will focus on in this notebook are the (1) `ds_ar_dhe.student_enrollment_table`, which contains information on students enrolled in public and private for-credit post-secondary programs that report to the Arkansas Division of Higher Education and (2) `ds_ar_dhe.graduated_student_table`, which includes data on all graduates in public and private for-credit programs. The [data documentation](P:\tr-enrollment-to-employment\Data_Dictionaries\AY2019_Public_Student_Information_System_Manual.pdf) for these two files, as well as the other files available in the schema, is available on the P drive.
+
+### Structure
+
+#### `student_enrollment_table`
+
+Let's take a look at the first few rows of the `student_enrollment_table` table to start:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dhe.student_enrollment_table
+LIMIT 5;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  head(5)
+```
+:::
+
+We can see that there are a lot of columns, and we know that not all may be necessary in defining a row. Based on background information, we know that the unit of observation in this table should be the `ssn_id` - a hashed value pertaining to a unique individual. We can see if a `ssn_id` may be present in multiple rows by comparing the total number of observations to the number of unique cases present in the data:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*), COUNT(DISTINCT(ssn_id))
+FROM ds_ar_dhe.student_enrollment_table;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  summarise(
+    n_rows = n(),
+    n_people = n_distinct(ssn_id)
+  )
+```
+:::
+
+Like with the QCEW and UI wage data, which is tracked longitudinally, the `student_enrollment_table` file is as well. You may have spotted the second and third columns in the data, `academic_year` and `term`, respectively, which track enrollment data by academic year and semester over time. Let's see if the combination of `ssn_id`, `academic_year`, and `term` defines a row in `student_enrollment_table`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT ssn_id, academic_year, term
+  FROM ds_ar_dhe.student_enrollment_table
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  distinct(ssn_id, academic_year, term) %>%
+  tally()
+```
+:::
+
+We're so close! There is actually one more variable we need to include to define a row. You may have noticed the first column in our data, `fice_code` which is a code used to identify higher education institutions. Adding the `fice_code` should capture individuals enrolled at multiple institution in the same academic term. Let's see if the combination of `ssn_id`, `academic_year`, `term`, and `fice_code` defines a row in `student_enrollment_table`:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT ssn_id, academic_year, term, fice_code
+  FROM ds_ar_dhe.student_enrollment_table
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  distinct(ssn_id, academic_year, term, fice_code) %>%
+  tally()
+```
+:::
+
+Perfect! There's no duplication in the file at the person/time/institution level. Note that for each person/time/institution combination, there are 29 other columns with information at this granularity.
+
+#### `graduated_student_table`
+
+Let's repeat the same approach for the `graduated_student_table` table, first looking at the first few rows:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT * 
+FROM ds_ar_dhe.graduated_student_table
+LIMIT 5;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "graduated_student_table")) %>%
+  head(5)
+```
+:::
+
+The unit of observation in this table should be the `ssn_id` as well. We can see that this table also has a `fice_code` variable, and instead of having both `academic_year` and `academic_term`, the table just has `academic_year`. We can check if a row can be uniquely defined by combinations at the `ssn_id`/`academic_year`/`fice_code` level:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT ssn_id, academic_year, fice_code
+  FROM ds_ar_dhe.graduated_student_table
+)
+SELECT COUNT(*) as unique_count
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "graduated_student_table")) %>%
+  distinct(ssn_id, academic_year, fice_code) %>%
+  tally()
+```
+:::
+
+Since this table contains graduation data, perhaps we need to include another variable that differentiates between credentials. Let's see if adding the column `degree_1`, which is the degree code for the student's first degree earned from the institution during the reporting year, might satisfy our row definition:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+WITH dis AS (
+  SELECT DISTINCT ssn_id, academic_year, fice_code, degree_1
+  FROM ds_ar_dhe.graduated_student_table
+)
+SELECT COUNT(*)
+FROM dis
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "graduated_student_table")) %>%
+  distinct(ssn_id, academic_year, fice_code, degree_1) %>%
+  tally()
+```
+:::
+
+We have a perfect match! There's no duplication in the file at the person/time/institution/degree level. Note that for each person/time/institution/degree combination, there are 25 other columns with information at this granularity.
+
+### Coverage
+
+In examining the QCEW and UI wage tables, we started by looking at the geographic coverage. You may have identified a few of the geographic variables, such `resident_state`, `geo_state`, and `geo_county` in `student_enrollment_table`. We know that the `student_enrollment_table` and the `graduated_student_table` consist of students that are either enrolled in an Arkansas higher education institution or graduated from an Arkansas higher education institution, so we will not explore these columns, and just focus on the time-based coverage.
+
+#### `student_enrollment_table`
+
+We can start by finding the minimum and maximum values of `academic_year`:
+
+> Note: Academic years start in July of the previous year and end in June. For example, the 2011 academic year spans from 7/1/2010 to 6/30/2011.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT MIN(academic_year), MAX(academic_year)
+FROM ds_ar_dhe.student_enrollment_table
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  summarize(
+    min_year = min(academic_year),
+    max_year = max(academic_year)
+  )
+```
+:::
+
+Since the enrollment file provides additional time elements besides `academic_year`, let's see if all `term` values are covered in the earliest and most recent academic years in the data:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+-- START WITH SAME CODE AS PREVIOUS CELL
+-- RESTRICT ENROLLMENT DATA TO THESE YEARS
+WITH min_max AS (
+  SELECT MIN(academic_year) as min_year, MAX(academic_year) as max_year
+  FROM ds_ar_dhe.student_enrollment_table
+)
+SELECT DISTINCT academic_year, term
+FROM ds_ar_dhe.student_enrollment_table set2 
+WHERE academic_year = (SELECT min_year FROM min_max) OR 
+  academic_year = (SELECT max_year FROM min_max)
+ORDER BY academic_year, term 
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+# same code as previous cell, just assigning to object
+min_max <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  summarize(
+    min_year = min(academic_year),
+    max_year = max(academic_year)
+  )
+
+# take min value
+min_year <- min_max %>% pull(min_year)
+
+# take max value
+max_year <- min_max %>% pull(max_year)
+
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  filter(academic_year == min_year | academic_year == max_year) %>%
+  distinct(academic_year, term) %>%
+  arrange(academic_year, term)
+```
+:::
+
+Interesting - in the first year, only 4 of the possible 8 terms appear. The 4 `term` values correspond to the Spring and Summer I sessions, and then in the final year, the data is missing off-schedule Summer I enrollees. We have separately confirmed that all other academic years have records with the complete suite of academic terms in the data.
+
+Armed with this information, recall that we can separately review the time coverage of a data set by counting the number of observations within each time period.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+
+SELECT academic_year, COUNT(*)
+FROM ds_ar_dhe.student_enrollment_table
+GROUP BY academic_year
+ORDER BY academic_year
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+enrollment_by_year <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  group_by(academic_year) %>%
+  summarize(
+    n = n()
+  ) %>%
+  ungroup() %>%
+  arrange(academic_year) %>%
+  collect()
+
+enrollment_by_year
+```
+:::
+
+We can then graph this in a line chart:
+
+```{r}
+enrollment_by_year %>%
+  ggplot(aes(x = academic_year, y = n, group = 1)) +
+  geom_line()
+```
+
+Outside of the sharp declines in the first and last years in the data that can be potentially explained by the lack of records for certain academic terms, there do not appear to be any additional irregularities within this time. It is interesting to see the number of enrollments steadily decline in the data, though.
+
+#### `graduated_student_table`
+
+We can apply the same approach to the `graduated_student_table` table:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT MIN(academic_year), MAX(academic_year)
+FROM ds_ar_dhe.graduated_student_table
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "graduated_student_table")) %>%
+  summarize(
+    min_month = min(academic_year),
+    max_month = max(academic_year)
+  )
+```
+:::
+
+As expected, `graduated_student_table` has the same `academic_year` range as `student_enrollment_table`. As an optional technical challenge, you can try to find the coverage within `academic_year` by using the `graduation_date` variable.
+
+> HINT: You can convert `graduation_date` to an actual date using the `to_date()` function in Redshift. Prepare to see some funky values!
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT academic_year, COUNT(*)
+FROM ds_ar_dhe.graduated_student_table gst 
+GROUP BY academic_year
+ORDER BY academic_year
+
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+graduation_by_year <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "graduated_student_table")) %>%
+  group_by(academic_year) %>%
+  summarize(
+    n = n()
+  ) %>%
+  ungroup() %>%
+  arrange(academic_year) %>%
+  collect()
+
+graduation_by_year
+```
+:::
+
+We can then graph this in a line chart:
+
+```{r}
+graduation_by_year %>%
+  ggplot(aes(x = academic_year, y = n, group = 1)) +
+  geom_line()
+```
+
+While we see a roughly inverse pattern in the number of observations over time in the `graduated_student_table` compared to the `student_enrollment_table`, there might be more to the story. In fact, what you should see from the optional technical challenge above is that not only is there only partial coverage for our first and last academic years in the data, but also there are some graduation dates that do not fully align with the proper academic year.
+
+### Select Variable Distribution
+
+#### `student_enrollment_table` - `student_level`
+
+One variable in the `student_enrollment_table` file that might be of particular interest is `student_level`. According to the [data dictionary](P:\tr-enrollment-to-employment\Data_Dictionaries\AY2019_Public_Student_Information_System_Manual.pdf), `student_level` is a code describing the level of total requirements the student has finished toward the completion of the certificate or degree program in which the student is enrolled.
+
+We can look at the distribution of observations by this variable:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT student_level, COUNT(*) 
+FROM ds_ar_dhe.student_enrollment_table
+GROUP BY student_level 
+ORDER BY student_level
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  group_by(student_level) %>%
+  summarize(n = n()) %>%
+  arrange(student_level)
+```
+:::
+
+These student level codes do not tell us much. Let's join to the `refstudentlevel` reference table to bring in the code descriptions.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+--LEFT JOIN FOR NULL OR BLANK STUDENT_LEVEL VALUES
+SELECT b.descr, b.abbr, COUNT(*) 
+FROM ds_ar_dhe.student_enrollment_table a
+LEFT JOIN ds_ar_dhe.refstudentlevel b 
+ON a.student_level = b.studentlevelid 
+GROUP BY a.student_level, b.descr, b.abbr
+ORDER by 3 desc;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+enroll <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "student_enrollment_table")) %>%
+  group_by(student_level) %>%
+  summarize(n = n()) %>%
+  collect()
+
+ref <- con %>%
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "refstudentlevel")) %>%
+  select(studentlevelid, descr, abbr) %>%
+  collect() %>%
+  # brings in extra space on each value for studentlevelid
+  mutate(studentlevelid = str_trim(studentlevelid))
+
+# left join to account for blank and NULL student_level values
+enroll %>%
+  left_join(ref, by = c("student_level" = "studentlevelid")) %>%
+  arrange(desc(n))
+```
+:::
+
+We can see that freshman is the most common student level in the `student_enrollment_table`.
+
+#### `graduated_student_table` - `degree_level`
+
+Similar to the `student_enrollment_table`, a variable in the `graduated_student_table` file that might be of particular interest is `degree_level`, which refers to the type of degree a student received. Ideally, this should align with an individual's `student_level` in the enrollment table when accounting for institution and time.
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT degree_level, COUNT(*) 
+FROM ds_ar_dhe.graduated_student_table
+GROUP BY degree_level 
+ORDER BY degree_level
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "graduated_student_table")) %>%
+  group_by(degree_level) %>%
+  summarize(n = n()) %>%
+  arrange(degree_level)
+```
+:::
+
+These degree level options seem to differ from the `student_level`. Let's bring in a separate reference table, `refdegreetype`, to bring in the degree type descriptions:
+
+::: {.panel-tabset .unlisted .unnumbered}
+## SQL query {.unnumbered}
+
+```{sql, eval=FALSE}
+SELECT COUNT(*), r.degreetypedescr, r.rptgdegtype
+FROM ds_ar_dhe.graduated_student_table a 
+LEFT JOIN ds_ar_dhe.refdegreetype r 
+ON a.degree_level = r.degreetypeid
+GROUP BY r.degreetypedescr, r.rptgdegtype
+ORDER BY 1 desc;
+```
+
+## `dbplyr` query {.unnumbered}
+
+```{r}
+grad <- con %>% 
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "graduated_student_table")) %>%
+  group_by(degree_level) %>%
+  summarize(n = n()) %>%
+  collect()
+
+ref_deg <- con %>%
+  tbl(in_schema(schema = "ds_ar_dhe",
+                table = "refdegreetype")) %>%
+  select(degreetypeid, degreetypedescr, rptgdegtype) %>%
+  collect()
+
+# left join to account for degree_level values that don't occur in reference table
+grad %>%
+  left_join(ref_deg, by = c("degree_level" = "degreetypeid")) %>%
+  arrange(desc(n))
+```
+:::
+
+Perhaps not surprisingly given the enrollment data exploration, a baccalaureate degree is the most common degree type earned in our data.
+
+#### `graduated_student_table` - `degree_1`
+
+Beyond `degree_level`, we can also evaluate a student's primary earned degree by looking at `degree_1`. The `degree_1` column represents degree codes, rather than descriptive names. In the future, we will be able to use the `degree_fice_year_table` reference table to match these codes to specific degree names, but have identified data quality concerns in the meantime. We will update this section once the reference table is updated.
+:::::::::::::::::::

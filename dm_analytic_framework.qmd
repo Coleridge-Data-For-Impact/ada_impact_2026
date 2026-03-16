@@ -1,0 +1,35 @@
+---
+title: "Analytic Framework Scripts"
+subtitle: "Analytic framework, cohort creation, and WIOA co-enrollment"
+toc: true
+number-sections: true
+format:
+  html:
+    embed-resources: true
+execute:
+  eval: false
+---
+
+# Analytic Framework
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/analytic_frame_work.sql"))
+cat("```\n")
+```
+
+# Create PROMIS Cohort
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/create_promis_cohort.sql"))
+cat("```\n")
+```
+
+# WIOA Co-Enrollment
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/wioa_coenrollment.sql"))
+cat("```\n")
+```

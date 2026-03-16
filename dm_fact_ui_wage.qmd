@@ -1,0 +1,19 @@
+---
+title: "FACT: Person UI Wage"
+subtitle: "Scripts for loading FACT Person UI Wage tables"
+toc: true
+number-sections: true
+format:
+  html:
+    embed-resources: true
+execute:
+  eval: false
+---
+
+# Load FACT Person UI Wage
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person UI Wage/DW RedShift - Load FACT Person UI Wage.sql"))
+cat("```\n")
+```

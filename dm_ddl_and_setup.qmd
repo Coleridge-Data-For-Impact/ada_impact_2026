@@ -1,0 +1,83 @@
+---
+title: "DDL and Setup Scripts"
+subtitle: "Data warehouse DDL, permissions, and dimension table creation"
+toc: true
+number-sections: true
+format:
+  html:
+    embed-resources: true
+execute:
+  eval: false
+---
+
+# Data Warehouse DDL
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/DW RedShift - DDL.sql"))
+cat("```\n")
+```
+
+# Permissions
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/00_permissions.sql"))
+cat("```\n")
+```
+
+# Dimension: County
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/dim_county.sql"))
+cat("```\n")
+```
+
+# Dimension: State
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/dim_state.sql"))
+cat("```\n")
+```
+
+# Dimension: CIP
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/dim_cip.sql"))
+cat("```\n")
+```
+
+# Dimension: Year/Quarter
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/dim_year_quarter.sql"))
+cat("```\n")
+```
+
+# Dimension: Program
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/dim_program.sql"))
+cat("```\n")
+```
+
+# Dimension: Person
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/dim_person.sql"))
+cat("```\n")
+```
+
+# Dimension: Intake Characteristics
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/dim_intake_characteristics.sql"))
+cat("```\n")
+```

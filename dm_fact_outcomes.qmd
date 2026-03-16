@@ -1,0 +1,83 @@
+---
+title: "FACT: Person Outcome"
+subtitle: "Scripts for loading FACT Person Outcome tables"
+toc: true
+number-sections: true
+format:
+  html:
+    embed-resources: true
+execute:
+  eval: false
+---
+
+# Load — JOINT PIRL
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - JOINT PIRL.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Adult
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Adult.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Adult Education
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Adult Education.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Dislocated Worker
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Dislocated Worker.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Job Corps
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Job Corps.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Vocational Rehab
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Vocational Rehab.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Wagner-Peyser
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Wagner Peyser.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Youth
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Youth.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Youth Build
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Outcome/DW RedShift - Load FACT Person Outcome - PIRL - Youth Build.sql"))
+cat("```\n")
+```

@@ -1,0 +1,57 @@
+project:
+  type: book
+  output-dir: docs
+
+
+book:
+  title: "State IMPACT Applied Data Analytics 2025-2026 Class"
+  subtitle: ""
+  author: "Coleridge | Data for Impact"
+  date: last-modified
+  date-format: "[Last Updated on] DD MMMM, YYYY"
+  page-navigation: true
+  chapters:
+    - index.qmd
+    - part: "Notebooks"
+      chapters:
+        - 01_EDA.qmd
+        - 02_datamodel_cross_section.qmd
+        - 03_measurement.qmd
+        - 03a_data_model_introduction.qmd
+        - 04_regression.qmd
+        - 05_propensity_score_matching.qmd
+        - 06_export.qmd
+        - 07_difference_in_differences.qmd
+    - part: "Supplemental"
+      chapters:
+        - installing_packages_impact.qmd
+        - Imputation_Illustration.qmd
+
+  search:
+      location: sidebar
+      type: textbox
+      limit: 3
+  sidebar:
+    background: "#4c2a9d"
+    search: true
+    style: floating
+    tools:
+      - icon: github
+        href: https://coleridge-initiative.github.io/ada_impact_2026/
+
+format:
+  html:
+    theme: journal
+    backgroundcolor: "white"
+    highlight-style: arrow
+    embed-resources: false
+    toc: true
+    df-print: paged
+    number-depth: 1
+    number-sections: false
+
+execute:
+  eval: false
+  error: false
+
+

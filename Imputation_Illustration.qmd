@@ -1,0 +1,111 @@
+---
+title: "Imputation Illustration"
+format: html
+execute:
+  eval: false
+---
+
+```{r}
+library(ColeridgeInitiative)
+library(tidyverse)
+library(dbplyr)
+library(zoo) ## need to install
+```
+
+```{r, eval=FALSE}
+
+options(java.parameters = c("-XX:+UseConcMarkSweepGC", "-Xmx16000m"))
+gc()
+
+con <- adrf_redshift(usertype = "training")
+```
+
+
+```{sql}
+
+select
+        ncm.*,
+        fpuw.year_quarter_key,
+        fpuw.ui_quarterly_wages
+from tr_state_impact_ada_training.nb_analysis_matched ncm
+left join tr_state_impact_ada_training.fact_person_ui_wage fpuw
+    on ncm.person_key = fpuw.person_key
+    and (fpuw.year_quarter_key >=27 and fpuw.year_quarter_key <= 39 or fpuw.ui_quarterly_wages is null)
+order by ncm.person_key, fpuw.year_quarter_key 
+
+```
+
+
+## Releveling a factor reference category
+
+```{r}
+
+table(data_did$eth_recode)
+
+data_did <- data_did |>
+  mutate(eth_recode = fct_relevel(eth_recode, "Wht"))
+
+table(data_did$eth_recode)
+
+
+```
+
+## Imputation examples
+
+### group wise modal imputation for categorical variables
+must install the statip package
+
+```{r}
+#install.packages('statip')
+
+# Group-wise modal imputation example
+data_did_modal <- data_did |> 
+  group_by(eth_recode) |> 
+  mutate(
+    gender = ifelse(is.na(gender),
+                    as.character(statip::mfv(gender, na_rm = TRUE)),
+                    as.character(gender))
+  ) %>%
+  ungroup()
+
+```
+
+
+### group wise median imputation for continuous variables
+
+
+```{r}
+#install.packages('statip')
+
+# Group-wise modal imputation example
+data_did_median <- data_did |> 
+  group_by(eth_recode) |> 
+  mutate(
+    quartery_wages_imp = if_else(is.na(ui_quarterly_wages)==T,
+                    median(data_did$ui_quarterly_wages, na.rm=T),
+                    ui_quarterly_wages)
+  ) %>%
+  ungroup()
+
+```
+
+
+## Nearest neighbor imputation
+specify the variables you want imputed in the "variable" list, and the variables you want to use to measure the closeness of a given observation in the "dist_var" list
+```{r}
+# kNN imputation example
+
+#install.packages('VIM')
+df_knn <- VIM::kNN(data_did, k = 3,
+                   variable = c("gender", "age_cat", "edu_cat", "wages_q37", "wages_q41", "ui_quarterly_wages"),
+                   dist_var = c("gender", "age_cat", "edu_cat"),
+                   imp_var = FALSE)
+
+df_knn
+
+summary(data_did$ui_quarterly_wages)
+
+summary(df_knn$ui_quarterly_wages)
+
+
+```

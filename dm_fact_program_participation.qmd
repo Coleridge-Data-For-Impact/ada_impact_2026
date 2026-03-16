@@ -1,0 +1,107 @@
+---
+title: "FACT: Person Program Participation"
+subtitle: "Scripts for loading FACT Person Program Participation tables"
+toc: true
+number-sections: true
+format:
+  html:
+    embed-resources: true
+execute:
+  eval: false
+---
+
+# Fact Person Program Participation (Base)
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/02_fact_person_program_participation.sql"))
+cat("```\n")
+```
+
+# Load — JOINT PIRL
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - JOINT PIRL.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Adult
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - PIRL - Adult.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Adult Education
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - PIRL - Adult Education.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Dislocated Worker
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - PIRL - Dislocated Worker.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Job Corps
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - PIRL - Job Corps.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Vocational Rehab
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - PIRL - Vocational Rehab.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Wagner-Peyser
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - PIRL - Wagner Peyser.sql"))
+cat("```\n")
+```
+
+# Load — PIRL Youth
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - PIRL - Youth.sql"))
+cat("```\n")
+```
+
+# Load — Higher Education
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - Higher Education.sql"))
+cat("```\n")
+```
+
+# Load — SNAP
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - SNAP.sql"))
+cat("```\n")
+```
+
+# Load — TANF
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Program Participation/DW RedShift - Load FACT Person Program Participation - TANF.sql"))
+cat("```\n")
+```

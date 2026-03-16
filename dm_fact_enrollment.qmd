@@ -1,0 +1,51 @@
+---
+title: "FACT: Quarterly Program Enrollment"
+subtitle: "Scripts for loading FACT Person Quarterly Program Enrollment tables"
+toc: true
+number-sections: true
+format:
+  html:
+    embed-resources: true
+execute:
+  eval: false
+---
+
+# Fact Quarterly Program Enrollment (Base)
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/01_fact_quarterly_program_enrollment.sql"))
+cat("```\n")
+```
+
+# Load FACT Person Quarterly Program Enrollment — JOINT PIRL
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Quarterly Program Enrollment/DW RedShift - Load FACT Person Quarterly Program Enrollment - JOINT PIRL.sql"))
+cat("```\n")
+```
+
+# Load FACT Person Quarterly Program Enrollment — PIRL
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Quarterly Program Enrollment/DW RedShift - Load FACT Person Quarterly Program Enrollment - PIRL.sql"))
+cat("```\n")
+```
+
+# Load FACT Person Quarterly Program Enrollment — SNAP
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Quarterly Program Enrollment/DW RedShift - Load FACT Person Quarterly Program Enrollment - SNAP.sql"))
+cat("```\n")
+```
+
+# Load FACT Person Quarterly Program Enrollment — TANF
+
+```{r echo=FALSE, results='asis'}
+cat("```sql\n")
+writeLines(readLines("data model scripts/FACT Person Quarterly Program Enrollment/DW RedShift - Load FACT Person Quarterly Program Enrollment - TANF.sql"))
+cat("```\n")
+```
