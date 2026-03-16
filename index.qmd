@@ -4,6 +4,8 @@ This e-book contains the class notebooks for Coleridge's Applied Data Analytics 
 
 © 2026 The Coleridge Initiative, Inc
 
+DOI: [10.5281/zenodo.19052284](https://doi.org/10.5281/zenodo.19052284)
+
 # About the State IMPACT Collaborative
 
 The [State IMPACT (Innovative Models for Policy Acceleration & Collaborative Testing) Collaborative](https://coleridgeinitiative.org/state-impact-collaborative) is a partnership between the [Coleridge Initiative](https://coleridgeinitiative.org) and [MDRC](https://www.mdrc.org/work/projects/state-impact-collaborative) designed to strengthen state agencies' capacity for rigorous program evaluation.

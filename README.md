@@ -4,6 +4,8 @@ Class materials for the [Coleridge Initiative](https://coleridgeinitiative.org) 
 
 The published book is available at: **https://coleridge-initiative.github.io/ada_impact_2026/**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19052284.svg)](https://doi.org/10.5281/zenodo.19052284)
+
 ## About the State IMPACT Collaborative
 
 The State IMPACT (Innovative Models for Policy Acceleration & Collaborative Testing) Collaborative is a partnership between the Coleridge Initiative and [MDRC](https://www.mdrc.org/work/projects/state-impact-collaborative) that strengthens state agencies' capacity for rigorous program evaluation. The collaborative brings together state and local agency staff, MDRC researchers, and Coleridge data scientists in a "learning-by-doing" model, working on workforce development, higher education, income support, housing, and justice policy questions.

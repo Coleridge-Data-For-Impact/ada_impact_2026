@@ -9,6 +9,7 @@ book:
   author: "Coleridge | Data for Impact"
   date: last-modified
   date-format: "[Last Updated on] DD MMMM, YYYY"
+  doi: 10.5281/zenodo.19052284
   page-navigation: true
   chapters:
     - index.qmd
